@@ -14,7 +14,9 @@
    $reset = *reset;
    $pc[31:0] = >>1$next_pc;
    $next_pc[31:0] = $reset ? 0 :
-                   $is_branch_taken ? $br_tgt_pc : ($pc + 4);
+                   $is_branch_taken ? $br_tgt_pc :
+                   $is_jalr_taken ? $jalr_tgt_pc  :
+                   $pc + 4; // default case 
    
    //--------------------------------------------IMEM-----------------------------------------------------
    $addr[31:0] = $pc; 
@@ -98,7 +100,8 @@
    $is_sh  = ($funct3 == 3'b001 & $opcode == 7'b0100011);
    $is_sw  = ($funct3 == 3'b010 & $opcode == 7'b0100011);
 
-
+   $is_load = $is_lb | $is_lh | $is_lw | $is_lbu | $is_lhu ;
+   $is_store = $is_sb | $is_sh | $is_sw ;
    // Assert these to end simulation (before Makerchip cycle limit).
    *passed = 1'b0;
    *failed = *cyc_cnt > M4_MAX_CYC;
@@ -133,10 +136,13 @@
                   $is_slti ? (($src_value1[31] == $imm[31]) ? $sltiu_rslt : {31'b0, $src_value1[31]}) :
                   $is_sra ? $sra_rslt : 
                   $is_srai ? $srai_rslt :
+                  $is_load ? $src_value1 + $imm :
+                  $is_store ? $src_value1 + $imm : 
                   32'b0; // default
    
    //----------------------------------------------Branch Unit--------------------------------------------
    $br_tgt_pc[31:0] = $pc + $imm;
+   $jalr_tgt_pc[31:0] = $src_value1 + $imm;
 
    $beq =  $src_value1 == $src_value2 ? 1 : 0;
    $bne =  $src_value1 != $src_value2 ? 1 : 0;
@@ -151,8 +157,9 @@
                      $is_bge & $bge ? 1 :
                      $is_bltu & $bltu ? 1 :
                      $is_bgeu & $bgeu ? 1:
+                     $is_jal ? 1 :
                      0; //default
-
+   $is_jalr_taken = $is_jalr;
 
    //------------------------------------------------------Register File------------------------------------------------------
    // check what is valid from the instruction 
