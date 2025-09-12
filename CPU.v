@@ -136,8 +136,8 @@
                   $is_slti ? (($src_value1[31] == $imm[31]) ? $sltiu_rslt : {31'b0, $src_value1[31]}) :
                   $is_sra ? $sra_rslt : 
                   $is_srai ? $srai_rslt :
-                  $is_load ? $src_value1 + $imm :
-                  $is_store ? $src_value1 + $imm : 
+                  $is_load ? ($src_value1 + $imm) >> 2 :
+                  $is_store ? ($src_value1 + $imm) >> 2 : 
                   32'b0; // default
    
    //----------------------------------------------Branch Unit--------------------------------------------
@@ -168,13 +168,20 @@
    $wr_en = $is_rd_valid & $rd != 0;
 
    // assign proper values to the macro 
-   m4+rf(32, 32, $reset, $wr_en, $rd, $result, $rd_en1, $rs1, $rd_data1, $rd_en2, $rs2, $rd_data2)
+   m4+rf(32, 32, $reset, $wr_en, $rd, $wr_data_rf, $rd_en1, $rs1, $rd_data1, $rd_en2, $rs2, $rd_data2)
    
+   $wr_data_rf[31:0] = $is_load ? $ld_data : $result;
    // rename the values from the macro 
    $src_value1[31:0] = $rd_data1;
    $src_value2[31:0] = $rd_data2;
+   //--------------------------------------------------------------DMEM-----------------------------------------------------
+   $wr_en_dmem = $is_store ? 1 : 0;
+   $rd_en_dmem = $is_load ? 1 : 0;
    
    //m4+dmem(32, 32, $reset, $addr[4:0], $wr_en, $wr_data[31:0], $rd_en, $rd_data)
+   m4+dmem(32, 32, $reset, $result , $wr_en_dmem,$src_value2, $rd_en_dmem, $rd_data_dmem)
+   $ld_data[31:0] = $rd_data_dmem;
+   //------------------------------------------------------------------------------------------------------------------------
    m4+cpu_viz()
 \SV
    endmodule
