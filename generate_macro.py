@@ -1,5 +1,5 @@
-input_file = "/home/abheeravpatankar/linux_foundation_riscv/hexdump_bin.txt"
-output_file = "/home/abheeravpatankar/linux_foundation_riscv/hexdump_out.txt"
+input_file = "/home/abheeravpatankar/RISCV-CPU/hexdump_bin.txt"
+output_file = "/home/abheeravpatankar/RISCV-CPU/hexdump_out.txt"
 
 with open(input_file) as f:
     bin_instrs = [line.strip() for line in f if line.strip()]
@@ -15,7 +15,7 @@ lines.append(f"  initial begin \\\n")
 for i, instr in enumerate(tlv_instrs):
     lines.append(f"    instrs[{i}] = {instr}; \\\n")
 lines.append(f"  end \\\n")
-lines.append(f"  assign DATA = instrs[ADDR];")
+lines.append(f"  assign DATA = instrs[ADDR >> 2];")
 
 with open(output_file, "w") as f:
     f.writelines(lines)

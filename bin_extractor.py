@@ -1,6 +1,6 @@
 # File paths
-input_file = "/home/abheeravpatankar/linux_foundation_riscv/hexdump_in.txt"
-output_file = "/home/abheeravpatankar/linux_foundation_riscv/hexdump_bin.txt"
+input_file = "/home/abheeravpatankar/RISCV-CPU/hexdump_in.txt"
+output_file = "/home/abheeravpatankar/RISCV-CPU/hexdump_bin.txt"
 
 # Open input and output files
 with open(input_file, "r") as infile, open(output_file, "w") as outfile:

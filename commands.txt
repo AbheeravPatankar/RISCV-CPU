@@ -1,2 +1,8 @@
-riscv64-unknown-elf-gcc -march=rv32im -mabi=ilp32 -g -c RV32_test.c -o RV32_test.o -- compile the code into riscv assembly 
-riscv64-unknown-elf-objdump -d -j .text RV32_test.o > hexdump_in.txt -- dump the dissassembly for the text section 
+************* compile the code into riscv assembly 
+riscv64-unknown-elf-gcc -march=rv32im -mabi=ilp32 -g -c RV32_test.c -o RV32_test.o
+************* compile entry.s
+riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -c entry.S -o entry.o
+************* link the RV32_test.o and entry.o
+riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -nostartfiles -nostdlib entry.o RV32_test.o -T kernel.ld -o kernel.elf
+************* dump the dissassembly for the text section 
+riscv64-unknown-elf-objdump -d -j .text kernel.elf |& tee /home/abheeravpatankar/RISCV-CPU/hexdump_in.txt 

@@ -115,4 +115,4 @@ def decode_riscv_full(bin_str: str):
 
 
 # Example usage
-decode_riscv_full("00000000000000000000011000010011")
+decode_riscv_full("00000101100000000000000001101111")
