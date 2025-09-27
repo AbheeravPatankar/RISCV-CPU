@@ -33,4 +33,4 @@
     instrs[29] = 32'b00000010000000010000000100010011; \
     instrs[30] = 32'b00000000000000001000000001100111; \
   end \
-  assign DATA = instrs[ADDR];
+  assign DATA = instrs[ADDR >> 2];
