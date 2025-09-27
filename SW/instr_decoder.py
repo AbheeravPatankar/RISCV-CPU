@@ -113,6 +113,17 @@ def decode_riscv_full(bin_str: str):
     print(f"imm: {imm & 0xFFFFFFFF:032b} ({imm})")
     print(f"Detected Instructions: {detected_instrs}")
 
+def decode_riscv_from_hex(hex_str: str):
+    """Convert a hex instruction to 32-bit binary and decode."""
+    # Remove '0x' if present
+    hex_str = hex_str.lower().replace("0x", "")
+    # Convert to integer
+    instr_int = int(hex_str, 16)
+    # Convert to 32-bit binary string
+    bin_str = format(instr_int, "032b")
+    # Decode
+    decode_riscv_full(bin_str)
 
 # Example usage
-decode_riscv_full("00000101100000000000000001101111")
+#decode_riscv_full("00000000100000010010110000100011")
+decode_riscv_from_hex("fef407a3")

@@ -1,9 +1,18 @@
 
-int foo()
+char foo()
 {
     int a = 10;
     int b = 20;
-    return a + b ;
+    char c = 'a';
+    if( a % 5 == 0)
+    {
+        c = a * b;
+    }
+    else
+    {
+        c = b / a;
+    }
+    return c ;
 }
 
 

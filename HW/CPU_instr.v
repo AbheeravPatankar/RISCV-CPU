@@ -172,8 +172,8 @@
                   $is_slti ? (($src_value1[31] == $imm[31]) ? $sltiu_rslt : {31'b0, $src_value1[31]}) :
                   $is_sra ? $sra_rslt : 
                   $is_srai ? $srai_rslt :
-                  $is_load ? ($src_value1 + $imm) >> 2 :
-                  $is_store ? ($src_value1 + $imm) >> 2 : 
+                  $is_load ? ($src_value1 + $imm):
+                  $is_store ? ($src_value1 + $imm): 
                   32'b0; // default
    
    //----------------------------------------------Branch Unit--------------------------------------------
@@ -215,7 +215,7 @@
    $rd_en_dmem = $is_load ? 1 : 0;
    
    //m4+dmem(32, 32, $reset, $addr[4:0], $wr_en, $wr_data[31:0], $rd_en, $rd_data)
-   m4+dmem(32, 32, $reset, $result , $wr_en_dmem,$src_value2, $rd_en_dmem, $rd_data_dmem)
+   m4+dmem(1024, 32, $reset, ($result >> 2), $wr_en_dmem,$src_value2, $rd_en_dmem, $rd_data_dmem)
    $ld_data[31:0] = $rd_data_dmem;
    //------------------------------------------------------------------------------------------------------------------------
    m4+cpu_viz()
