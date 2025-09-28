@@ -4,9 +4,43 @@
    
    m4_include_lib(['https://raw.githubusercontent.com/stevehoover/LF-Building-a-RISC-V-CPU-Core/main/lib/risc-v_shell_lib.tlv'])
 
+`define READONLY_MEM(ADDR, DATA) \
+  logic [31:0] instrs [0:30]; \
+  initial begin \
+    instrs[0] = 32'b00000000000000000000000100010011; \
+    instrs[1] = 32'b00000000000000000000000010010111; \
+    instrs[2] = 32'b00000000110000001000000010010011; \
+    instrs[3] = 32'b00000100000000000000000001101111; \
+    instrs[4] = 32'b00000000000000000000000001101111; \
+    instrs[5] = 32'b11111110000000010000000100010011; \
+    instrs[6] = 32'b00000000100000010010111000100011; \
+    instrs[7] = 32'b00000010000000010000010000010011; \
+    instrs[8] = 32'b00000000101000000000011110010011; \
+    instrs[9] = 32'b11111110111101000010011000100011; \
+    instrs[10] = 32'b00000001010000000000011110010011; \
+    instrs[11] = 32'b11111110111101000010010000100011; \
+    instrs[12] = 32'b11111110110001000010011100000011; \
+    instrs[13] = 32'b11111110100001000010011110000011; \
+    instrs[14] = 32'b00000000111101110000011110110011; \
+    instrs[15] = 32'b00000000000001111000010100010011; \
+    instrs[16] = 32'b00000001110000010010010000000011; \
+    instrs[17] = 32'b00000010000000010000000100010011; \
+    instrs[18] = 32'b00000000000000001000000001100111; \
+    instrs[19] = 32'b11111110000000010000000100010011; \
+    instrs[20] = 32'b00000000000100010010111000100011; \
+    instrs[21] = 32'b00000000100000010010110000100011; \
+    instrs[22] = 32'b00000010000000010000010000010011; \
+    instrs[23] = 32'b11111011100111111111000011101111; \
+    instrs[24] = 32'b11111110101001000010011000100011; \
+    instrs[25] = 32'b11111110110001000010011110000011; \
+    instrs[26] = 32'b00000000000001111000010100010011; \
+    instrs[27] = 32'b00000001110000010010000010000011; \
+    instrs[28] = 32'b00000001100000010010010000000011; \
+    instrs[29] = 32'b00000010000000010000000100010011; \
+    instrs[30] = 32'b00000000000000001000000001100111; \
+  end \
+  assign DATA = instrs[ADDR >> 2];
 
-
-   `define READONLY_MEM(ADDR, DATA) logic [31:0] instrs [0:8-1]; assign DATA = instrs[ADDR[$clog2($size(instrs)) + 1 : 2]]; assign instrs = '{{32'b11111110000000010000000100010011}, {32'b00000000100000010010111000100011}, {32'b00000000100000010010111000100011}, {32'b11111110101001000010011000100011}, {32'b11111110101001000010011000100011}, {32'b11111110101001000010011000100011}, {32'b11111110101001000010011000100011}, {32'b11111110101001000010011000100011}};
 
 \SV
    m4_makerchip_module   // (Expanded in Nav-TLV pane.)
@@ -18,7 +52,7 @@
    $next_pc[31:0] = $reset ? 0 :
                    $is_branch_taken ? $br_tgt_pc :
                    $is_jalr_taken ? $jalr_tgt_pc  :
-                   $pc + 1; // default case 
+                   $pc + 4; // default case 
    
    //--------------------------------------------IMEM-----------------------------------------------------
    $addr[31:0] = $pc; 
@@ -106,7 +140,7 @@
    $is_store = $is_sb | $is_sh | $is_sw ;
    // Assert these to end simulation (before Makerchip cycle limit).
    *passed = 1'b0;
-   *failed = *cyc_cnt > 50;
+   *failed = *cyc_cnt > 1000;
 
    //--------------------------------------------------ALU--------------------------------------------------
    $sext_src1[63:0] = {{32{$src_value1[31]}}, $src_value1}; 
@@ -138,8 +172,8 @@
                   $is_slti ? (($src_value1[31] == $imm[31]) ? $sltiu_rslt : {31'b0, $src_value1[31]}) :
                   $is_sra ? $sra_rslt : 
                   $is_srai ? $srai_rslt :
-                  $is_load ? ($src_value1 + $imm) >> 2 :
-                  $is_store ? ($src_value1 + $imm) >> 2 : 
+                  $is_load ? ($src_value1 + $imm):
+                  $is_store ? ($src_value1 + $imm): 
                   32'b0; // default
    
    //----------------------------------------------Branch Unit--------------------------------------------
@@ -178,11 +212,17 @@
    $src_value2[31:0] = $rd_data2;
    //--------------------------------------------------------------DMEM-----------------------------------------------------
    $wr_en_dmem = $is_store ? 1 : 0;
-   $rd_en_dmem = $is_load ? 1 : 0;
+   $rd_en_dmem = $is_load | $is_store? 1 : 0;
+
+   // handle the bit shifting logic if load byte is called
+   $word_index[29:0] = $result[31:2];
+   $byte_index[1:0] = $result[1:0];
+   $write_value[31:0] = ($src_value2 << $byte_index * 8) | $rd_data_dmem;
+
    
    //m4+dmem(32, 32, $reset, $addr[4:0], $wr_en, $wr_data[31:0], $rd_en, $rd_data)
-   m4+dmem(32, 32, $reset, $result , $wr_en_dmem,$src_value2, $rd_en_dmem, $rd_data_dmem)
-   $ld_data[31:0] = $rd_data_dmem;
+   m4+dmem(1024, 32, $reset, $word_index, $wr_en_dmem,$write_value, $rd_en_dmem, $rd_data_dmem)
+   $ld_data[31:0] = ($rd_data_dmem >> $byte_index * 8) | 0;
    //------------------------------------------------------------------------------------------------------------------------
    m4+cpu_viz()
 \SV

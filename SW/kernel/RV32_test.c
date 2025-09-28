@@ -1,23 +1,24 @@
 
-char foo()
+
+
+
+char foo(char* a, char* b)
 {
-    int a = 10;
-    int b = 20;
-    char c = 'a';
-    if( a % 5 == 0)
+    if(*a == 'a')
     {
-        c = a * b;
+        return a;
     }
     else
     {
-        c = b / a;
+        return b;
     }
-    return c ;
 }
 
 
 int main()
 {
-    int res = foo();
+    char a = 'a';
+    char b = 'e';
+    int res = foo(&a, &b);
     return res;
 }

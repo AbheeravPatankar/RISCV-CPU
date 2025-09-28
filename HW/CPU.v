@@ -4,7 +4,7 @@
    
    m4_include_lib(['https://raw.githubusercontent.com/stevehoover/LF-Building-a-RISC-V-CPU-Core/main/lib/risc-v_shell_lib.tlv'])
 
-	m4_test_prog()
+
 
 \SV
    m4_makerchip_module   // (Expanded in Nav-TLV pane.)
@@ -104,7 +104,7 @@
    $is_store = $is_sb | $is_sh | $is_sw ;
    // Assert these to end simulation (before Makerchip cycle limit).
    *passed = 1'b0;
-   *failed = *cyc_cnt > M4_MAX_CYC;
+   *failed = *cyc_cnt > 1000;
 
    //--------------------------------------------------ALU--------------------------------------------------
    $sext_src1[63:0] = {{32{$src_value1[31]}}, $src_value1}; 
@@ -136,8 +136,8 @@
                   $is_slti ? (($src_value1[31] == $imm[31]) ? $sltiu_rslt : {31'b0, $src_value1[31]}) :
                   $is_sra ? $sra_rslt : 
                   $is_srai ? $srai_rslt :
-                  $is_load ? ($src_value1 + $imm) >> 2 :
-                  $is_store ? ($src_value1 + $imm) >> 2 : 
+                  $is_load ? ($src_value1 + $imm):
+                  $is_store ? ($src_value1 + $imm): 
                   32'b0; // default
    
    //----------------------------------------------Branch Unit--------------------------------------------
@@ -174,14 +174,22 @@
    // rename the values from the macro 
    $src_value1[31:0] = $rd_data1;
    $src_value2[31:0] = $rd_data2;
+   
    //--------------------------------------------------------------DMEM-----------------------------------------------------
    $wr_en_dmem = $is_store ? 1 : 0;
-   $rd_en_dmem = $is_load ? 1 : 0;
+   $rd_en_dmem = $is_load | $is_store ? 1 : 0;
+
+   // handle the bit shifting logic if load byte is called
+   $word_index[29:0] = $result[31:2];
+   $byte_index[1:0] = $result[1:0];
+   $write_value[31:0] = ($src_value2 << $byte_index * 8) | $rd_data_dmem;
+
    
    //m4+dmem(32, 32, $reset, $addr[4:0], $wr_en, $wr_data[31:0], $rd_en, $rd_data)
-   m4+dmem(32, 32, $reset, $result , $wr_en_dmem,$src_value2, $rd_en_dmem, $rd_data_dmem)
-   $ld_data[31:0] = $rd_data_dmem;
+   m4+dmem(1024, 32, $reset, $word_index, $wr_en_dmem,$write_value, $rd_en_dmem, $rd_data_dmem)
+   $ld_data[31:0] = ($rd_data_dmem >> $byte_index * 8) | 0;
    //------------------------------------------------------------------------------------------------------------------------
    m4+cpu_viz()
 \SV
    endmodule
+   
