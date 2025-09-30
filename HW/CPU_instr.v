@@ -231,7 +231,7 @@
    // handle the bit shifting logic 
    $word_index[29:0] = $result[31:2];
    $byte_index[1:0] = $result[1:0];
-   $rd_data_pre_process = !( 255 << $byte_index * 8 ) & $rd_data_dmem;
+   $rd_data_pre_process = $byte_index != 0 ? ( !( 255 << $byte_index * 8 ) & $rd_data_dmem ) : 0 & ( rd_data_dmem ) ;
    $write_value[31:0] = ($src_value2 << $byte_index * 8) | $rd_data_pre_process;
 
    
