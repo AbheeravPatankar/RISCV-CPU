@@ -231,7 +231,8 @@
    // handle the bit shifting logic 
    $word_index[29:0] = $result[31:2];
    $byte_index[1:0] = $result[1:0];
-   $write_value[31:0] = ($src_value2 << $byte_index * 8) | $rd_data_dmem;
+   $rd_data_pre_process = !( 255 << $byte_index * 8 ) & $rd_data_dmem;
+   $write_value[31:0] = ($src_value2 << $byte_index * 8) | $rd_data_pre_process;
 
    
    //m4+dmem(32, 32, $reset, $addr[4:0], $wr_en, $wr_data[31:0], $rd_en, $rd_data)
