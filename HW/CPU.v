@@ -180,6 +180,7 @@
    $rd_en_dmem = $is_load | $is_store ? 1 : 0;
 
    // handle the bit shifting logic if load byte is called
+   // Slight change in logic needed, simple bitwise-or doesn't work
    $word_index[29:0] = $result[31:2];
    $byte_index[1:0] = $result[1:0];
    $write_value[31:0] = ($src_value2 << $byte_index * 8) | $rd_data_dmem;
