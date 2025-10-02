@@ -125,5 +125,5 @@ def decode_riscv_from_hex(hex_str: str):
     decode_riscv_full(bin_str)
 
 # Example usage
-#decode_riscv_full("00000000100000010010110000100011")
-decode_riscv_from_hex("fef407a3")
+#decode_riscv_full("00000000000100010010111000100011")
+decode_riscv_from_hex("0012a023")
