@@ -215,7 +215,7 @@
    
    $rd_data_dmem[32-1:0] = $dmem1_rd_en ? /dmem[$dmem1_addr]$value : 'X;
    /dmem[1023:0]
-   $ld_data[31:0] = ($rd_data_dmem >> $byte_index * 8) | 0;
+   $ld_data[31:0] = ($rd_data_dmem >> $byte_index * 8) & 255;
    
 \SV_plus  
    initial begin

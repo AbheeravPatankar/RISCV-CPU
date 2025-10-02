@@ -13,5 +13,6 @@ _start:
     sb ra, 0(t0)
     addi ra, x0, 13     
     li t0, 2001         
-    sb ra, 0(t0) 
-    
+    sb ra, 0(t0)
+    li t0, 2001
+    lb sp,0(t0)

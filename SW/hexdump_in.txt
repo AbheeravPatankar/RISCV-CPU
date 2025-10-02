@@ -17,3 +17,5 @@ Disassembly of section .text:
   24:	00d00093          	li	ra,13
   28:	7d100293          	li	t0,2001
   2c:	00128023          	sb	ra,0(t0)
+  30:	7d100293          	li	t0,2001
+  34:	00028103          	lb	sp,0(t0)
