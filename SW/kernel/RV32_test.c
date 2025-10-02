@@ -1,7 +1,4 @@
 
-
-
-
 char foo(char* a, char* b)
 {
     if(*a == 'a')
