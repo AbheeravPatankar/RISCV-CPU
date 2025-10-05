@@ -1,7 +1,7 @@
 .section .text
 .global _entry
 _entry:
-    li  sp, 4096      # load sp with 4100
+    li  sp, 4096      # load sp with 4096
     la  ra, exit
     j   main       # call main function 
 
