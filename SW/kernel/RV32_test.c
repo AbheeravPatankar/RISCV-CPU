@@ -1,4 +1,8 @@
 
+
+//Kernel Developement begins
+
+
 void writei(int val, int* addr)
 {
     // Store 'val' at memory address 'addr'
