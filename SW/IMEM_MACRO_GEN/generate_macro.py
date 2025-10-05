@@ -1,5 +1,5 @@
-input_file = "/home/abheeravpatankar/RISCV-CPU/SW/hexdump_bin.txt"
-output_file = "/home/abheeravpatankar/RISCV-CPU/SW/hexdump_out.txt"
+input_file = "/home/abheeravpatankar/RISCV-CPU/SW/IMEM_MACRO_GEN/hexdump_bin.txt"
+output_file = "/home/abheeravpatankar/RISCV-CPU/SW/IMEM_MACRO_GEN/hexdump_out.v"
 
 with open(input_file) as f:
     bin_instrs = [line.strip() for line in f if line.strip()]

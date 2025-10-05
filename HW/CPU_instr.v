@@ -5,20 +5,11 @@
    m4_include_lib(['https://raw.githubusercontent.com/stevehoover/LF-Building-a-RISC-V-CPU-Core/main/lib/risc-v_shell_lib.tlv'])
 
 `define READONLY_MEM(ADDR, DATA) \
-  logic [31:0] instrs [0:11]; \
+  logic [31:0] instrs [0:2]; \
   initial begin \
-    instrs[0] = 32'b00000000101000000000000010010011; \
-    instrs[1] = 32'b01111101000000000000001010010011; \
-    instrs[2] = 32'b00000000000100101000000000100011; \
-    instrs[3] = 32'b00000000101100000000000010010011; \
-    instrs[4] = 32'b01111101000100000000001010010011; \
-    instrs[5] = 32'b00000000000100101000000000100011; \
-    instrs[6] = 32'b00000000110000000000000010010011; \
-    instrs[7] = 32'b01111101001000000000001010010011; \
-    instrs[8] = 32'b00000000000100101000000000100011; \
-    instrs[9] = 32'b00000000110100000000000010010011; \
-    instrs[10] = 32'b01111101000100000000001010010011; \
-    instrs[11] = 32'b00000000000100101000000000100011; \
+    instrs[0] = 32'b00000000000000000001001010110111; \
+    instrs[1] = 32'b10000000000000101000001010010011; \
+    instrs[2] = 32'b00000000000000101000000001100111; \
   end \
   assign DATA = instrs[ADDR >> 2];
 \SV
@@ -30,15 +21,19 @@
    $pc[31:0] = >>1$next_pc;
    $next_pc[31:0] = $reset ? 0 :
                    $is_branch_taken ? $br_tgt_pc :
-                   $is_jalr_taken ? $jalr_tgt_pc  :
+                   $is_jalr_taken ? $jalr_tgt_pc :
                    $pc + 4; // default case 
-   
+   // Select IMEM or DMEM and virtual to physical address mapping
+   $is_imem = $pc < 1024 ? 1 : 0;
+   $imem_addr[31:0] = $pc;
+   $dmem_addr[31:0] = $pc - 1024;
    //--------------------------------------------IMEM-----------------------------------------------------
-   $addr[31:0] = $pc; 
-   `READONLY_MEM($addr, $$instr[31:0])
+   `READONLY_MEM($imem_addr, $$imem_instr[31:0])
    
-
-   $instr[31:0] = $$instr[31:0];
+   //----------------------------------------Fetch INSTR------------------------------------------------
+   $dmem_word[31:0] = $dmem_addr >> 2 ;
+   $dmem_instr[31:0] = /dmem[$dmem_word]$value;
+   $instr[31:0] = $is_imem ? $$imem_instr[31:0] : $dmem_instr;
    //-------------------------------------------Decoder---------------------------------------------------
    // decode the instruction type
    $is_u_type = $instr[6:2] == 5'b00101 | $instr[6:2] == 5'b01101;
@@ -191,13 +186,14 @@
    $src_value2[31:0] = $rd_data2;
    
    //--------------------------------------------------------------DMEM-----------------------------------------------------
-               
+   
    $wr_en_dmem = $is_store ? 1 : 0;
    $rd_en_dmem = $is_load | $is_store ? 1 : 0;
-
+   //virtual to physicial address mapping 
+   $dmem_data_addr[31:0] = $result - 1024;
    // handle the bit shifting logic 
-   $word_index[29:0] = $result[31:2];
-   $byte_index[1:0] = $result[1:0];
+   $word_index[29:0] = $dmem_data_addr[31:2];
+   $byte_index[1:0] = $dmem_data_addr[1:0];
    $filter[31:0] = ~( 255 << $byte_index * 8 );
    $rd_data_pre_process[31:0] = $byte_index != 0 ? ( $filter & $rd_data_dmem ) : 0 & ( $rd_data_dmem ) ;
    $write_value[31:0] = ($src_value2 << $byte_index * 8) | $rd_data_pre_process; 
@@ -215,23 +211,31 @@
    
    $rd_data_dmem[32-1:0] = $dmem1_rd_en ? /dmem[$dmem1_addr]$value : 'X;
    /dmem[1023:0]
-   $ld_data[31:0] = ($rd_data_dmem >> $byte_index * 8) & 255;
+   $ld_data[31:0] = $byte_index > 0 ? ($rd_data_dmem >> $byte_index * 8) & 255 : $rd_data_dmem ;
    
 \SV_plus  
-   initial begin
-       /dmem[0]$value = 32'hDEAD_BEEF;
-       /dmem[1]$value = 32'h1234_5678;
-       /dmem[2]$value = 32'hABCD_0001;
-       /dmem[3]$value = 32'h1111_2222;
-       /dmem[4]$value = 32'h3333_4444;
-       /dmem[5]$value = 32'h5555_AAAA;
-   end
+initial begin
+    /dmem[256]$value  = 32'b00000000000000000001001010110111;
+ 	 /dmem[257]$value  = 32'b11000000000000101000001010010011; 
+ 	 /dmem[258]$value  = 32'b00000001100100000000001100010011; 
+ 	 /dmem[259]$value  = 32'b00000000011000101010000000100011; 
+  	 /dmem[260]$value  = 32'b00000000000000000001001010110111; 
+ 	/dmem[261]$value  = 32'b11000000010000101000001010010011; 
+ /dmem[262]$value  = 32'b00000001101000000000001100010011; 
+ /dmem[263]$value  = 32'b00000000011000101010000000100011;
+ /dmem[264]$value  = 32'b00000000000000000001001010110111;
+ /dmem[265]$value  = 32'b11000000100100101000001010010011;
+ /dmem[266]$value  = 32'b00000110000100000000001100010011;
+ /dmem[267]$value  = 32'b00000000011000101000000000100011;
+ /dmem[268]$value  = 32'b00000000000000000001001010110111;
+ /dmem[269]$value  = 32'b11000000101000101000001010010011;
+ /dmem[270]$value  = 32'b00000110001000000000001100010011;
+ /dmem[271]$value  = 32'b00000000011000101000000000100011;
+ 
+end
+
 \SV_plus
-
-// Call preload_dmem on reset
-   
-
-                   
+           
    //------------------------------------------------------------------------------------------------------------------------
 \SV
    endmodule

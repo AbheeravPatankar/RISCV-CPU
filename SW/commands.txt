@@ -5,13 +5,13 @@ riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -c entry.S -o entry.o
 ************* link the RV32_test.o and entry.o
 riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -nostartfiles -nostdlib entry.o RV32_test.o -T kernel.ld -lgcc -o kernel.elf
 ************* dump the dissassembly for the text section 
-riscv64-unknown-elf-objdump -d -j .text kernel.elf |& tee /home/abheeravpatankar/RISCV-CPU/SW/hexdump_in.txt 
+riscv64-unknown-elf-objdump -d -j .text kernel.elf |& tee /home/abheeravpatankar/RISCV-CPU/SW/IMEM_MACRO_GEN/hexdump_in.txt 
 
 bash alias - 
-build_riscv_kernel
+buildriscv
 
-
-riscv64-unknown-elf-as -o program.o asm_test_bench.S ; riscv64-unknown-elf-objdump -d program.o |& tee /home/abheeravpatankar/RISCV-CPU/SW/hexdump_in.txt
+*************Test Bench Comamnd
+riscv64-unknown-elf-as -march=rv32i -o program.o asm_test_bench.S ; riscv64-unknown-elf-objdump -d program.o |& tee /home/abheeravpatankar/RISCV-CPU/SW/IMEM_MACRO_GEN/hexdump_in.txt
  
 
 

@@ -1,21 +1,13 @@
 
-char foo(char* a, char* b)
+void writei(int val, int* addr)
 {
-    if(*a == 'a')
-    {
-        return a;
-    }
-    else
-    {
-        return b;
-    }
+    // Store 'val' at memory address 'addr'
+    *addr = val;
 }
 
 
 int main()
 {
-    char a = 'a';
-    char b = 'e';
-    int res = foo(&a, &b);
-    return res;
+    int res = g_arr_test();
+    writei(res,3072);
 }
