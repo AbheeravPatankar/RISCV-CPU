@@ -18,3 +18,16 @@ int page_free(PAGE* addr);
 
 void initpaging();
 
+PAGE* alloc_page();
+
+PAGE* create_page_table();
+
+void map_vm(uint32* pagetable, uint32 va, uint32 size, int perms );
+
+uint32* va_to_pa(uint32* pagetable, uint32 va);
+
+void copyout(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size);
+
+void copyin(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size);
+
+void unmap_vm(uint32* pagetable);
