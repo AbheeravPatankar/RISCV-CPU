@@ -1,8 +1,15 @@
 
-#define BAR (int*)3072
 
-void writei(int val, int* addr);
+#define BAR (uint32*)3072
+#define NULL ((void *)0)
+typedef unsigned int uint32 ;
 
-int memstr(int* src, int val, int size);
+void writei(int val, uint32* addr);
+
+int memstr(uint32* src, int val, uint32 size);
 
 void write_scratch(int val, int offset);
+
+void memcpy(uint32* dest, uint32* src, uint32 size);
+
+int max(int a, int b);

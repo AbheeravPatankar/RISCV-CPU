@@ -1,7 +1,8 @@
 
 #include "proc.h"
 #include "paging.h"
-PROC processes[MAX_PROC] ;
+
+PROC processes[MAX_PROC];
 
 // function to allocate new pid for the process
 
@@ -20,8 +21,34 @@ void procinit()
     {
         //init Kstack for 10 processes (max proc = 10)
         processes[i].state = UNUSED;
-        processes[i].kstatck = (int*)(kmem_end - (i + 1) * PAGE_SIZE);
+        processes[i].kstatck = (uint32*)(kmem_end - (i + 1) * PAGE_SIZE);
     }
+}
+
+//find unused proc struct
+PROC* alloc_proc()
+{
+    for(int i = 0; i < MAX_PROC; i++)
+    {
+        if(processes[i].state == UNUSED)
+        {
+            // allocate that structure member and return 
+            processes[i].state = USED;
+            return &processes[i];
+        }
+    }
+}
+
+// initialize the first user process (proc which will invoke the shell)
+void userinit(void)
+{
+    int pid = alloc_pid();
+    PROC* p = alloc_proc();
+    p->pid = pid;
+    PAGE* pagetable = create_page_table();
+    p->pagetable = pagetable;
+    // map the trapframe and trampoline section 
+    // parse the header and allocate pages 
 }
 
 // function to create a page for the user stack and heap 

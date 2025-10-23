@@ -17,3 +17,4 @@ typedef struct page
 int page_free(PAGE* addr);
 
 void initpaging();
+

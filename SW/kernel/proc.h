@@ -69,13 +69,15 @@ typedef struct proc
     int killed;
     int xstatus;
     int pid;
-    int* kstatck;
+    uint32*  kstatck;
     unsigned int size;
     struct proc* parent;
-    int*  pagetable;
+    uint32*  pagetable;
     struct trapframe* ptr_to_trapframe;
     struct context context;
     char name[16];
 } PROC;
 
 void procinit(void);
+
+void userinit(void);
