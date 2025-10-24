@@ -15,4 +15,9 @@ riscv64-unknown-elf-as -march=rv32i -o program.o asm_test_bench.S ; riscv64-unkn
  
 
 
+***********debug on QEMU Command 
+qemu-system-riscv32 -machine virt -m 128M -bios none -device loader,file=kernel.elf -nographic -s -S
+make clean ; make ;make debug
 
+***********Trigger gdb with remote connection 
+riscv32-unknown-elf-gdb -ex "target remote :1234" kernel.elf

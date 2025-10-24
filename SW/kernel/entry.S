@@ -1,9 +1,11 @@
-.section .text
-.global _entry
-_entry:
-    li  sp, 4096      # load sp with 4096
-    la  ra, exit
-    j   main       # call main function 
+    .section .text.entry
+    .global _start
+_start:
+    li      sp, 0x87FFFFFC
 
-exit:
-    j exit
+    # Call main
+    call    main
+
+    # Infinite loop after main returns
+1:
+    j       1b
