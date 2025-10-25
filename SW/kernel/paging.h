@@ -1,4 +1,7 @@
+#pragma once
+
 #include "utils.h"
+
 #define PAGE_SIZE  1024
  // For QEMU
 #define UMEM_START 0x80100000   
@@ -31,3 +34,5 @@ void copyout(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size);
 void copyin(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size);
 
 void unmap_vm(uint32* pagetable);
+
+void map_va_to_pa(uint32* pagetable, uint32 va, uint32* pa, int perms );

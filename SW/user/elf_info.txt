@@ -1,0 +1,42 @@
+Analyzing ELF file: prog.elf
+
+======================================================================
+Error running command: riscv64-unknown-elf-objdump -h prog.elf | grep ' .srodata '
+Error: 
+
+.TEXT SECTION:
+----------------------------------------------------------------------
+  Start Address: 0x00000000 (0)
+  Size:          280 bytes (0x118)
+  End Address:   0x00000118 (280)
+
+MAIN FUNCTION:
+----------------------------------------------------------------------
+  Address:       0x000000dc (220)
+
+DATA SECTIONS:
+----------------------------------------------------------------------
+  First Data Section Start: 0x00000118 (280)
+  Combined Size (4-byte aligned): 120 bytes (0x78)
+  Data Memory Range:        0x00000118 - 0x00000190
+
+======================================================================
+DATA SECTIONS BREAKDOWN (in memory order, with 4-byte alignment):
+======================================================================
+Section      Address      Raw Size     Aligned      Padding 
+----------------------------------------------------------------------
+.rodata      0x00000118      4 bytes      4 bytes    0 bytes
+.sdata       0x0000011c      5 bytes      8 bytes    3 bytes
+.data        0x00000124     79 bytes     80 bytes    1 bytes
+.sbss        0x00000174     13 bytes     16 bytes    3 bytes
+.bss         0x00000184     12 bytes     12 bytes    0 bytes
+======================================================================
+
+SUMMARY:
+----------------------------------------------------------------------
+  .text start:           NOT FOUND
+  .text size:            280 bytes (0x118)
+  main() address:        0x000000dc
+  first data section:    0x00000118
+  total data size:       120 bytes (0x78) [4-byte aligned]
+======================================================================
