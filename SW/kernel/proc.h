@@ -1,7 +1,13 @@
+#pragma once
+
+#include "utils.h"
+#include "paging.h"
 
 #define MAX_PROC 10
 #define KMEM_START 2147483648
 #define KMEM_SIZE  1048576 // 1 MB
+
+
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 struct trapframe {
@@ -77,6 +83,24 @@ typedef struct proc
     struct context context;
     char name[16];
 } PROC;
+
+typedef struct elf_header
+{
+  uint32 magic;
+  uint32 entry;          // address of main function in the program
+  int segment_count;     // Number of segments this executable has 
+  uint32 segment_offset; // offset from where the segment headers can be read 
+
+}ELF_HEADER;
+
+typedef struct segment_header
+{
+  int flags;
+  uint32 offset; // address in the executable where the section starts 
+  uint32 vaddr;  // address in the program where this segment is to be loaded 
+  uint32 filesz; // size of the segment
+  uint32 memsz;  // size in mem that the segment will occupy
+}SEGMENT_HEADER;
 
 void procinit(void);
 

@@ -1,5 +1,5 @@
 #include "paging.h"
-#include "utils.h"
+
 struct page_list
 {
     PAGE* free_page;
@@ -65,7 +65,7 @@ void map_vm(uint32* pagetable, uint32 va, uint32 size, int perms )
         pt_index = va / PAGE_SIZE;
         pagetable[pt_index] = (uint32)pa + perms ;
         //scrub the page 
-        memstr(pa, 0, PAGE_SIZE);
+        memstr((uint32*)pa, 0, PAGE_SIZE);
         va += PAGE_SIZE;
         size -= PAGE_SIZE;
     }
@@ -116,9 +116,25 @@ void unmap_vm(uint32* pagetable)
         if(pagetable[i] % 2 == 1)
         {
             // if entry is valid call free on the page
-            uint32* page_addr = (uint32)pagetable[i] / PAGE_SIZE;
-            page_free(page_addr);
+            uint32* page_addr = (uint32*) ((uint32)pagetable[i] / PAGE_SIZE );
+            page_free((PAGE*)page_addr);
         }
            
     }
+}
+
+// map a given va to a given pa 
+void map_va_to_pa(uint32* pagetable, uint32 va, uint32* pa, int perms)
+{
+    // check if both va and pa are page aligned 
+    if(va % PAGE_SIZE != 0)
+    {
+        return ;
+    }
+    if( (uint32)pa % PAGE_SIZE != 0)
+    {
+        return ;
+    }
+    int pt_index = va / PAGE_SIZE;
+    pagetable[pt_index] = (uint32)pa + perms;
 }

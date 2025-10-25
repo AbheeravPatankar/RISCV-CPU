@@ -1,8 +1,12 @@
 
+#pragma once
 
 #define BAR (uint32*)3072
 #define NULL ((void *)0)
+
 typedef unsigned int uint32 ;
+
+extern char trampoline[]; 
 
 void writei(int val, uint32* addr);
 

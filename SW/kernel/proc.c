@@ -1,6 +1,5 @@
 
 #include "proc.h"
-#include "paging.h"
 
 PROC processes[MAX_PROC];
 
@@ -37,6 +36,7 @@ PROC* alloc_proc()
             return &processes[i];
         }
     }
+    return NULL;
 }
 
 // initialize the first user process (proc which will invoke the shell)
@@ -44,10 +44,15 @@ void userinit(void)
 {
     int pid = alloc_pid();
     PROC* p = alloc_proc();
+    if(p == NULL)
+        return ;
     p->pid = pid;
     PAGE* pagetable = create_page_table();
-    p->pagetable = pagetable;
-    // map the trapframe and trampoline section 
+    p->pagetable = (uint32*)(pagetable);
+    // map the trapframe and trampoline section
+    map_va_to_pa(pagetable, 0 , trampoline , 2);
+    PAGE* trapframe = alloc_page();
+    map_va_to_pa(pagetable, PAGE_SIZE, (uint32*)trapframe, 3);
     // parse the header and allocate pages 
 }
 

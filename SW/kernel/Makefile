@@ -7,14 +7,14 @@ CC   = $(ARCH)-gcc
 OBJDUMP = $(ARCH)-objdump
 GDB  = $(ARCH)-gdb
 
-CFLAGS = -O0 -g -Wall -Werror -ffreestanding -fno-pic -fno-builtin -fno-inline -fno-omit-frame-pointer -fno-optimize-sibling-calls -fno-tree-vectorize -fno-unroll-loops -march=rv32i -mabi=ilp32 -nostdlib
+CFLAGS = -g -Wall -Werror -ffreestanding -fno-pic -fno-builtin -march=rv32i -mabi=ilp32 -nostdlib
 ASFLAGS = $(CFLAGS)
 
 LDSCRIPT = kernel.ld
 
 # Add all your C source files here
 SRCS_C   = main.c paging.c utils.c proc.c
-SRCS_ASM = entry.S
+SRCS_ASM = entry.S trampoline.S
 
 OBJS_C   = $(SRCS_C:.c=.o)
 OBJS_ASM = $(SRCS_ASM:.S=.o)
