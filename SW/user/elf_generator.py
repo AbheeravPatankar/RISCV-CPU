@@ -3,6 +3,7 @@
 import subprocess
 import sys
 import re
+import os
 
 
 def run_command(command):
@@ -22,8 +23,6 @@ def get_section_info(elf_path, section_name):
     output = run_command(command)
 
     if output:
-        # Format: Idx Name Size VMA LMA File off Algn
-        # Example:  1 .text 00001234 00010000 00010000 00001000 2**2
         parts = output.split()
         if len(parts) >= 4:
             size = int(parts[2], 16)
@@ -39,7 +38,6 @@ def get_main_address(elf_path):
     output = run_command(command)
 
     if output:
-        # Parse: address is the first column in the symbol table
         match = re.search(r'^([0-9a-fA-F]+)', output.strip())
         if match:
             return int(match.group(1), 16)
@@ -53,157 +51,299 @@ def align_up(value, alignment):
 
 
 def analyze_data_sections(elf_path):
-    """
-    Analyze data sections and return:
-    1. Start address of the first data section that appears
-    2. Combined size of all data sections (considering 4-byte alignment)
-    """
-    # Data sections in the order they might appear
+    """Analyze data sections and return combined info."""
     data_section_names = ['.rodata', '.srodata', '.sdata', '.data', '.sbss', '.bss']
-
     found_sections = []
 
-    # Find all existing data sections
     for section_name in data_section_names:
         info = get_section_info(elf_path, section_name)
         if info:
             found_sections.append(info)
 
     if not found_sections:
-        print("No data sections found!")
         return None, 0, [], None
 
-    # Sort by address to find the first one
     found_sections.sort(key=lambda x: x['address'])
-
-    # First data section address
     first_section = found_sections[0]
     first_address = first_section['address']
 
-    # Calculate combined size considering 4-byte alignment between sections
-    total_size = 0
-    for i, section in enumerate(found_sections):
-        # Add the section size
-        section_size = section['size']
-        aligned_size = align_up(section_size, 4)
-
-        # Store both raw and aligned sizes
-        section['aligned_size'] = aligned_size
-        section['padding'] = aligned_size - section_size
-
-        total_size += aligned_size
-
-    # Alternative calculation: measure from first section start to last section end (aligned)
     last_section = found_sections[-1]
     last_end_address = last_section['address'] + last_section['size']
     last_end_aligned = align_up(last_end_address, 4)
 
-    # Use memory range method if sections are contiguous
     memory_range_size = last_end_aligned - first_address
 
     return first_address, memory_range_size, found_sections, last_end_aligned
 
 
+def print_header_structure(elf_path, output_file="header.c"):
+    """Print the header structure with all placeholders filled in."""
+
+    # Analyze the ELF file
+    text_info = get_section_info(elf_path, '.text')
+    main_address = get_main_address(elf_path)
+    first_data_addr, total_data_size, data_sections, last_data_addr = analyze_data_sections(elf_path)
+
+    if not text_info:
+        print("ERROR: .text section not found!")
+        return False
+
+    if main_address is None:
+        print("ERROR: main function not found!")
+        return False
+
+    # Calculate sizes and offsets
+    text_address = text_info['address']
+    text_size = text_info['size']
+    text_memsz = align_up(text_size, 256)  # Round up to multiple of 256
+
+    # Data section info
+    if first_data_addr is not None:
+        data_address = first_data_addr
+        data_filesz = total_data_size
+        data_memsz = align_up(data_filesz, 256)
+    else:
+        data_address = 0
+        data_filesz = 0
+        data_memsz = 0
+
+    # Build the header structure content
+    content = []
+    content.append("/* This is a generated file */")
+    content.append("")
+    content.append("typedef unsigned int uint32;")
+    content.append("")
+    content.append("typedef struct elf_header")
+    content.append("{")
+    content.append("uint32 magic;")
+    content.append("uint32 entry;")
+    content.append("int segment_count;")
+    content.append("uint32 segment_offset;")
+    content.append("}ELF_HEADER;")
+    content.append("")
+    content.append("typedef struct segment_header")
+    content.append("{")
+    content.append("int flags;")
+    content.append("uint32 offset;")
+    content.append("uint32 vaddr;")
+    content.append("uint32 filesz;")
+    content.append("uint32 memsz;")
+    content.append("}SEGMENT_HEADER;")
+    content.append("")
+    content.append("__asm__(\".section .header,\\\"aw\\\",@progbits\");")
+    content.append("__asm__(\".align 16\");")
+    content.append("")
+    # ELF_HEADER FIRST
+    content.append(
+        f"ELF_HEADER elf_header __attribute__((section(\".header\"), aligned(16))) = {{1234, 0x{main_address:08x}, 2, 16}};")
+    content.append("")
+    # SEGMENT_HEADER SECOND
+    content.append("SEGMENT_HEADER segment_header[2] __attribute__((section(\".header\"), aligned(16))) = {")
+    content.append(" {")
+    content.append(f"4, 0x{text_address + 0x40:08x}, 0x00, {text_size}, {text_memsz}")
+    content.append(" },")
+    content.append(" {")
+    content.append(f"4, 0x{data_address + 0x40:08x}, 0x00, {data_filesz}, {data_memsz}")
+    content.append(" }")
+    content.append("};")
+    content.append("")
+    # Add padding to make text section start at offset 0x40 (64 bytes)
+    content.append("char padding[8] __attribute__((section(\".header\"))) = {0};")
+
+    # Write to file
+    with open(output_file, 'w') as f:
+        f.write('\n'.join(content) + '\n')
+
+    # Also print to stdout
+    for line in content:
+        print(line)
+
+    print(f"\nHeader structure written to: {output_file}")
+    return True
+
+
+def generate_header_c_file(elf_path, output_c_path):
+    """Generate a proper C file with the header structure."""
+
+    # Analyze the ELF file
+    text_info = get_section_info(elf_path, '.text')
+    main_address = get_main_address(elf_path)
+    first_data_addr, total_data_size, data_sections, last_data_addr = analyze_data_sections(elf_path)
+
+    if not text_info:
+        print("ERROR: .text section not found!")
+        return False
+
+    if main_address is None:
+        print("ERROR: main function not found!")
+        return False
+
+    # Calculate sizes and offsets
+    text_address = text_info['address']
+    text_size = text_info['size']
+    text_memsz = align_up(text_size, 256)
+
+    # Data section info
+    if first_data_addr is not None:
+        data_address = first_data_addr
+        data_filesz = total_data_size
+        data_memsz = align_up(data_filesz, 256)
+    else:
+        data_address = 0
+        data_filesz = 0
+        data_memsz = 0
+
+    # Generate proper C file with ELF_HEADER first
+    with open(output_c_path, 'w') as f:
+        f.write("typedef unsigned int uint32;\n")
+        f.write("struct elf_header\n")
+        f.write("{\n")
+        f.write("uint32 magic;\n")
+        f.write("uint32 entry; // address of main function in the program\n")
+        f.write("int segment_count; // Number of segments this executable has\n")
+        f.write("uint32 segment_offset; // offset from where the segment headers can be read\n")
+        f.write("}__attribute__((packed)) ELF_HEADER;\n")
+        f.write("struct segment_header\n")
+        f.write("{\n")
+        f.write("int flags;\n")
+        f.write("uint32 offset; // address in the executable where the section starts\n")
+        f.write("uint32 vaddr; // address in the program where this segment is to be loaded\n")
+        f.write("uint32 filesz; // size of the segment\n")
+        f.write("uint32 memsz; // size in mem that the segment will occupy\n")
+        f.write("}__attribute__((packed)) SEGMENT_HEADER[2];\n")
+        # ELF_HEADER definition comes first
+        f.write(
+            f"ELF_HEADER = {{/* magic */1234,/*offset get from python file */0x{main_address:08x} ,/*segment_count*/ 2, /* segment_offset */ 16}} ;\n")
+        # SEGMENT_HEADER definition comes second
+        f.write("SEGMENT_HEADER = {\n")
+        f.write(" {\n")
+        f.write(
+            f" /*flags = execute */ 4, /*offset -- address of the text section obtained from the python script*/ 0x{text_address + 0x40:08x} , /*vaddr*/ 0x00, /*filesz obtain the size of the .text segment */ {text_size}, /*memsz round the filesz up to multiple of 256 */ {text_memsz}\n")
+        f.write(" },\n")
+        f.write(" {\n")
+        f.write(
+            f" /*flags = execute */ 4, /*offset -- address of the first data section from the python script*/ 0x{data_address + 0x40:08x} , /*vaddr*/ 0x00, /*filesz obtain the added size of the . data segments */ {data_filesz}, /*memsz round the filesz up to multiple of 256 */ {data_memsz}\n")
+        f.write(" }\n")
+        f.write(" };\n")
+        # Add padding to make text section start at offset 0x40 (64 bytes)
+        f.write("char padding[24] __attribute__((section(\".header\"))) = {0};\n")
+
+    print(f"\nGenerated C file: {output_c_path}")
+    return True
+
+
+def compile_and_extract_header(c_file, output_bin):
+    """Compile the C file and extract the binary header."""
+    obj_file = c_file.replace('.c', '.o')
+
+    # Compile to object file
+    print(f"Compiling {c_file}...")
+    compile_cmd = f"riscv64-unknown-elf-gcc -c {c_file} -o {obj_file}"
+    result = run_command(compile_cmd)
+    if result is None:
+        return False
+
+    # Extract binary data
+    print(f"Extracting binary header to {output_bin}...")
+    extract_cmd = f"riscv64-unknown-elf-objcopy -O binary {obj_file} {output_bin}"
+    result = run_command(extract_cmd)
+    if result is None:
+        return False
+
+    # Clean up object file
+    if os.path.exists(obj_file):
+        os.remove(obj_file)
+
+    return True
+
+
+def attach_header_to_binary(header_bin, original_bin, output_bin):
+    """Attach header to the original binary."""
+    print(f"Attaching header to binary...")
+
+    # Read header
+    with open(header_bin, 'rb') as f:
+        header_data = f.read()
+
+    # Read original binary
+    with open(original_bin, 'rb') as f:
+        binary_data = f.read()
+
+    # Write combined binary
+    with open(output_bin, 'wb') as f:
+        f.write(header_data)
+        f.write(binary_data)
+
+    print(f"\nSuccessfully created: {output_bin}")
+    print(f"  Header size:  {len(header_data)} bytes")
+    print(f"  Binary size:  {len(binary_data)} bytes")
+    print(f"  Total size:   {len(header_data) + len(binary_data)} bytes")
+
+    return True
+
+
 def main():
     if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <path_to_elf_file>")
+        print(f"Usage: {sys.argv[0]} <elf_file> [binary_file] [output_file]")
+        print(f"\nMode 1 - Print header structure only:")
+        print(f"  {sys.argv[0]} <elf_file>")
+        print(f"\nMode 2 - Generate C file and attach to binary:")
+        print(f"  {sys.argv[0]} <elf_file> <binary_file> [output_file]")
         sys.exit(1)
 
     elf_path = sys.argv[1]
 
-    print(f"Analyzing ELF file: {elf_path}\n")
+    # Mode 1: Just print the header structure
+    if len(sys.argv) == 2:
+        print(f"Analyzing ELF file: {elf_path}\n")
+        print("=" * 70)
+        print_header_structure(elf_path)
+        print("=" * 70)
+        return
+
+    # Mode 2: Generate C file and attach to binary
+    binary_path = sys.argv[2]
+    output_path = sys.argv[3] if len(sys.argv) > 3 else "output.bin"
+
+    # Temporary files
+    header_c = "header_generated.c"
+    header_bin = "header.bin"
+
+    print(f"Processing ELF file: {elf_path}")
+    print(f"Binary to attach header to: {binary_path}")
+    print(f"Output file: {output_path}\n")
     print("=" * 70)
 
-    # Get .text section info
-    text_info = get_section_info(elf_path, '.text')
-    if text_info:
-        text_address = text_info['address']
-        text_size = text_info['size']
-        text_end = text_address + text_size
-    else:
-        print("ERROR: .text section not found!")
-        text_address = None
-        text_size = None
-        text_end = None
-
-    # Get main function address
-    main_address = get_main_address(elf_path)
-
-    # Get data sections info
-    first_data_addr, total_data_size, data_sections, last_data_addr = analyze_data_sections(elf_path)
-
-    # Display TEXT section results
-    print("\n.TEXT SECTION:")
-    print("-" * 70)
-    if text_info:
-        print(f"  Start Address: 0x{text_address:08x} ({text_address})")
-        print(f"  Size:          {text_size} bytes (0x{text_size:x})")
-        print(f"  End Address:   0x{text_end:08x} ({text_end})")
-    else:
-        print("  NOT FOUND")
-
-    # Display main function address
-    print("\nMAIN FUNCTION:")
-    print("-" * 70)
-    if main_address is not None:
-        print(f"  Address:       0x{main_address:08x} ({main_address})")
-    else:
-        print("  NOT FOUND")
-
-    # Display data sections results
-    print("\nDATA SECTIONS:")
-    print("-" * 70)
-    if first_data_addr is not None:
-        print(f"  First Data Section Start: 0x{first_data_addr:08x} ({first_data_addr})")
-        print(f"  Combined Size (4-byte aligned): {total_data_size} bytes (0x{total_data_size:x})")
-        print(f"  Data Memory Range:        0x{first_data_addr:08x} - 0x{last_data_addr:08x}")
-    else:
-        print("  NO DATA SECTIONS FOUND")
-
-    # Detailed breakdown
-    if data_sections:
-        print(f"\n{'=' * 70}")
-        print("DATA SECTIONS BREAKDOWN (in memory order, with 4-byte alignment):")
-        print(f"{'=' * 70}")
-        print(f"{'Section':<12} {'Address':<12} {'Raw Size':<12} {'Aligned':<12} {'Padding':<8}")
-        print(f"{'-' * 70}")
-
-        for section in data_sections:
-            end_addr = section['address'] + section['size']
-            aligned = section.get('aligned_size', section['size'])
-            padding = section.get('padding', 0)
-            print(f"{section['name']:<12} 0x{section['address']:08x}   "
-                  f"{section['size']:4d} bytes   {aligned:4d} bytes   {padding:2d} bytes")
-
-    print(f"{'=' * 70}")
-
-    # Summary
-    print("\nSUMMARY:")
-    print("-" * 70)
-    print(f"  .text start:           0x{text_address:08x}" if text_address else "  .text start:           NOT FOUND")
-    print(
-        f"  .text size:            {text_size} bytes (0x{text_size:x})" if text_size else "  .text size:            NOT FOUND")
-    print(f"  main() address:        0x{main_address:08x}" if main_address else "  main() address:        NOT FOUND")
-    print(
-        f"  first data section:    0x{first_data_addr:08x}" if first_data_addr else "  first data section:    NOT FOUND")
-    print(
-        f"  total data size:       {total_data_size} bytes (0x{total_data_size:x}) [4-byte aligned]" if first_data_addr else "  total data size:       NOT FOUND")
+    # Print the header structure
+    print_header_structure(elf_path)
     print("=" * 70)
+    print()
 
-    # Return as dictionary for programmatic use
-    result = {
-        'text_address': text_address,
-        'text_size': text_size,
-        'main_address': main_address,
-        'first_data_section_address': first_data_addr,
-        'combined_data_size': total_data_size,
-        'data_range_start': first_data_addr,
-        'data_range_end': last_data_addr,
-        'data_sections': data_sections
-    }
+    # Generate C file
+    if not generate_header_c_file(elf_path, header_c):
+        print("Failed to generate header C file")
+        sys.exit(1)
 
-    return result
+    # Compile and extract header binary
+    if not compile_and_extract_header(header_c, header_bin):
+        print("Failed to compile header")
+        sys.exit(1)
+
+    # Attach header to binary
+    if not attach_header_to_binary(header_bin, original_bin, output_bin):
+        print("Failed to attach header")
+        sys.exit(1)
+
+    # Clean up temporary files (optional - comment out if you want to keep them)
+    # if os.path.exists(header_c):
+    #     os.remove(header_c)
+    # if os.path.exists(header_bin):
+    #     os.remove(header_bin)
+
+    print("\n" + "=" * 70)
+    print("SUCCESS! Header attached successfully.")
+    print("=" * 70)
 
 
 if __name__ == "__main__":
-    result = main()
+    main()
