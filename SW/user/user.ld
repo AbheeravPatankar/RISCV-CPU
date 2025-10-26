@@ -17,7 +17,6 @@ SECTIONS
         *(.srodata.*)
     }
     
-    /* --- Small Data starts at 0x00000400 (1024 decimal) --- */
     .sdata  : ALIGN(4)
     {
         __global_pointer$ = . + 0x800;  /* GP register base (optional) */
