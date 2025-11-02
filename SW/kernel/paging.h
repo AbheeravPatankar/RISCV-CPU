@@ -2,7 +2,7 @@
 
 #include "utils.h"
 
-#define PAGE_SIZE  1024
+#define PAGE_SIZE  256
  // For QEMU
 #define UMEM_START 0x80100000   
 #define UMEM_END   0x80200000

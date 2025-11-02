@@ -20,4 +20,4 @@ qemu-system-riscv32 -machine virt -m 128M -bios none -device loader,file=kernel.
 make clean ; make ;make debug
 
 ***********Trigger gdb with remote connection 
-riscv32-unknown-elf-gdb -ex "target remote :1234" kernel.elf
+riscv32-unknown-elf-gdb -ex "target remote :1234" ./kernel

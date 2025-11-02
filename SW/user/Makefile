@@ -43,10 +43,11 @@ all: $(FINAL_BIN)
 	@echo ""
 	@echo "Cleaning intermediate files..."
 	@rm -f $(USER_OBJ) $(PROG_ELF) $(PROG_BIN)
-	@rm -f $(HEADER_C) $(HEADER_OBJ) $(HEADER_BIN)
+	@rm -f $(HEADER_OBJ) $(HEADER_BIN)
 	@rm -f $(ELF_INFO)
 	@mv $(FINAL_BIN) $(OUTPUT_BIN)
 	@echo "Final binary: $(OUTPUT_BIN)"
+	@echo "Kept files: $(HEADER_C)"
 	@echo "================================"
 
 # Build user program ELF
@@ -95,19 +96,23 @@ info: $(ELF_INFO)
 hexdump: $(OUTPUT_BIN)
 	hexdump -C $(OUTPUT_BIN)
 
-# Clean all generated files
+# Clean all generated files (but keep header.c)
 .PHONY: clean
 clean:
-	@echo "Cleaning generated files..."
+	@echo "Cleaning generated files (keeping header.c)..."
+	rm -f $(USER_OBJ) $(PROG_ELF) $(PROG_BIN)
+	rm -f $(HEADER_OBJ) $(HEADER_BIN)
+	rm -f $(ELF_INFO) $(FINAL_BIN) $(OUTPUT_BIN)
+	@echo "Clean complete (header.c preserved)"
+
+# Clean everything including header.c
+.PHONY: distclean
+distclean:
+	@echo "Deep cleaning all generated files..."
 	rm -f $(USER_OBJ) $(PROG_ELF) $(PROG_BIN)
 	rm -f $(HEADER_C) $(HEADER_OBJ) $(HEADER_BIN)
 	rm -f $(ELF_INFO) $(FINAL_BIN) $(OUTPUT_BIN)
-	@echo "Clean complete"
-
-# Clean everything except source files
-.PHONY: distclean
-distclean: clean
-	@echo "Deep clean complete"
+	@echo "Deep clean complete (including header.c)"
 
 # Help target
 .PHONY: help
@@ -118,13 +123,14 @@ help:
 	@echo "  all       - Build final binary (default)"
 	@echo "  info      - Show ELF analysis information"
 	@echo "  hexdump   - Display hex dump of final binary"
-	@echo "  clean     - Remove all generated files"
+	@echo "  clean     - Remove generated files (keep header.c)"
+	@echo "  distclean - Remove all generated files (including header.c)"
 	@echo "  help      - Show this help message"
 	@echo ""
 	@echo "Generated files:"
 	@echo "  $(PROG_ELF)   - User program ELF"
 	@echo "  $(PROG_BIN)   - Stripped program binary"
-	@echo "  $(HEADER_C)   - Generated header C file"
+	@echo "  $(HEADER_C)   - Generated header C file (PRESERVED)"
 	@echo "  $(HEADER_BIN) - Header binary"
 	@echo "  $(OUTPUT_BIN) - Final output binary (named after source)"
 

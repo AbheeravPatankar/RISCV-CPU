@@ -2,6 +2,7 @@
 
 #include "utils.h"
 #include "paging.h"
+#include "uart.h"
 
 #define MAX_PROC 10
 #define KMEM_START 2147483648
@@ -96,8 +97,8 @@ typedef struct elf_header
 typedef struct segment_header
 {
   int flags;
-  uint32 offset; // address in the executable where the section starts 
-  uint32 vaddr;  // address in the program where this segment is to be loaded 
+  uint32 offset; // address in the user bin where the section starts 
+  uint32 vaddr;  // address in the user bin where this segment is to be loaded 
   uint32 filesz; // size of the segment
   uint32 memsz;  // size in mem that the segment will occupy
 }SEGMENT_HEADER;

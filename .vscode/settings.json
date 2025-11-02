@@ -2,6 +2,7 @@
     "files.associations": {
         "stddef.h": "c",
         "proc.h": "c",
-        "paging.h": "c"
+        "paging.h": "c",
+        "utils.h": "c"
     }
 }

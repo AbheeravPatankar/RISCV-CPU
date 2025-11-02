@@ -5,6 +5,44 @@ struct page_list
     PAGE* free_page;
 }umem;
 
+int set_perms(char* code)
+{
+
+    int perms_bin[5];
+    for(int i = 0 ; i < 5; i++)
+    {
+        perms_bin[i] = 0;
+    }
+
+
+    for(int i = 0 ; i < 5; i++)
+    {
+        switch(code[i])
+        {
+            case 'V':
+                perms_bin[4] = 1;
+                break;
+            case 'R':
+                perms_bin[3] = 1;
+                break;
+            case 'W':
+                perms_bin[2] = 1;
+                break;
+            case 'X':
+                perms_bin[1] = 1;
+                break;
+            case 'U':
+                perms_bin[0] = 1;
+                break;
+            default :
+                return ;
+        }
+        
+        int perms = binaryToDecimal(perms_bin, 5);
+        return perms;
+        
+    }
+}
 
 int page_free(PAGE* page_addr)
 {
@@ -59,13 +97,13 @@ void map_vm(uint32* pagetable, uint32 va, uint32 size, int perms )
     {
         return ;
     }
-    while(size > PAGE_SIZE)
+    while(size >= PAGE_SIZE)
     {
         pa = alloc_page(); // page is the pa 
         pt_index = va / PAGE_SIZE;
         pagetable[pt_index] = (uint32)pa + perms ;
         //scrub the page 
-        memstr((uint32*)pa, 0, PAGE_SIZE);
+        memstr((char*)pa, 0, PAGE_SIZE);
         va += PAGE_SIZE;
         size -= PAGE_SIZE;
     }
@@ -75,7 +113,9 @@ void map_vm(uint32* pagetable, uint32 va, uint32 size, int perms )
 uint32* va_to_pa(uint32* pagetable, uint32 va)
 {
     int pt_index = va / PAGE_SIZE;
-    uint32 pa = pagetable[pt_index];
+    uint32 pa = pagetable[pt_index]; 
+    // remove the perms bits
+    pa = pa - (pa % PAGE_SIZE);
     uint32 offset = va % PAGE_SIZE;
     return (uint32*)(pa + offset);    
 } 
@@ -86,10 +126,10 @@ void copyout(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size)
     while( size > 0 )
     {
         uint32* u_pa = va_to_pa(pagetable, u_va);
-        int size_temp = max(PAGE_SIZE - ((uint32)u_pa % PAGE_SIZE) , size);
-        memcpy(u_pa, k_pa, size_temp);
-        u_va += size_temp;
-        k_pa += size_temp;
+        int size_temp = min(PAGE_SIZE - ((uint32)u_pa % PAGE_SIZE) , size);
+        k_memcpy((char*)u_pa, (char*)k_pa, size_temp);
+        u_va = (char*)u_va + size_temp;
+        k_pa =(char*)k_pa + size_temp;
         size -= size_temp;
     }
 }
@@ -100,8 +140,8 @@ void copyin(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size)
     while( size > 0 )
     {
         uint32* u_pa = va_to_pa(pagetable, u_va);
-        int size_temp = max(PAGE_SIZE - ((uint32)u_pa % PAGE_SIZE) , size);
-        memcpy(k_pa, u_pa, size_temp);
+        int size_temp = min(PAGE_SIZE - ((uint32)u_pa % PAGE_SIZE) , size);
+        k_memcpy((char*)k_pa, (char*) u_pa, size_temp);
         u_va += size_temp;
         k_pa += size_temp;
         size -= size_temp;

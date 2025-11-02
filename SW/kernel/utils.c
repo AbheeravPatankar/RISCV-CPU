@@ -8,7 +8,7 @@ void writei(int val, uint32* addr)
 
 //write the same value from the given start addr to size bytes
 //src should be 4 byte aligned
-int memstr(uint32* src, int val, uint32 size)
+int memstr(char* src, int val, uint32 size)
 {
     if((int)src % 4 != 0) // src is not 4 byte aligned 
         return 1;
@@ -28,7 +28,7 @@ void write_scratch(int val, int offset)
 }
 
 // copy data from one physical address to other 
-void memcpy(uint32* dest, uint32* src, uint32 size)
+void k_memcpy(char* dest, char* src, uint32 size)
 {
     for(int i = 0; i < size; i++)
     {
@@ -52,4 +52,15 @@ int min(int a, int b)
         return b;
     else
         return a;
+}
+
+// convert a binary number to decimal
+int binaryToDecimal(int* arr, int size) 
+{
+    int decimal = 0;
+    for (int i = 0; i < size; i++) 
+    {
+        decimal = (decimal << 1) | arr[i];  // shift left and add current bit
+    }
+    return decimal;
 }

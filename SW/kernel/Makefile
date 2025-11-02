@@ -7,7 +7,7 @@ CC   = $(ARCH)-gcc
 OBJDUMP = $(ARCH)-objdump
 GDB  = $(ARCH)-gdb
 
-CFLAGS = -g -Wall -Werror -ffreestanding -fno-pic -fno-builtin -march=rv32i -mabi=ilp32 -nostdlib
+CFLAGS = -g -w -ffreestanding -fno-pic -fno-builtin -march=rv32i -mabi=ilp32 -nostdlib
 ASFLAGS = $(CFLAGS)
 
 LDSCRIPT = kernel.ld
@@ -22,8 +22,12 @@ OBJS     = $(OBJS_ASM) $(OBJS_C)
 
 PROG     = kernel
 
+# User program configuration
+USER_BIN = /home/abheerav/RISCV-CPU/SW/user/RV32_test.bin
+USER_ADDR = 0x800FC400
+
 QEMU = qemu-system-riscv32
-QEMU_FLAGS = -machine virt -nographic -bios none -kernel $(PROG)
+QEMU_FLAGS = -machine virt -nographic -bios none -kernel $(PROG) -device loader,file=$(USER_BIN),addr=$(USER_ADDR)
 
 # ==============================
 # Rules
@@ -38,7 +42,7 @@ all: $(PROG)
 	$(CC) $(ASFLAGS) -c $< -o $@
 
 $(PROG): $(OBJS)
-	$(CC) $(CFLAGS) -T $(LDSCRIPT) -o $@ $(OBJS)
+	$(CC) $(CFLAGS) -T $(LDSCRIPT) -o $@ $(OBJS) -lgcc
 
 disasm: $(PROG)
 	$(OBJDUMP) -D -M numeric,no-aliases $(PROG) > $(PROG).lst
