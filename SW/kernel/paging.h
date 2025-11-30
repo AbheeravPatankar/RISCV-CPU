@@ -19,7 +19,7 @@ typedef struct page
 
 int page_free(PAGE* addr);
 
-void initpaging();
+void paginginit();
 
 PAGE* alloc_page();
 

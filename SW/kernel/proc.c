@@ -1,8 +1,16 @@
 #include "proc.h"
+#include "trap.h"
+
+// function to allocate new pid for the process
 
 PROC processes[MAX_PROC];
 
-// function to allocate new pid for the process
+CPU cpu = {0};  // only one cpu object as the system is unicore 
+
+PROC* myproc()
+{
+    return cpu.current_proc;
+}
 
 int alloc_pid(void)
 {
@@ -118,15 +126,15 @@ void userinit()
     return ;
 }
 
-
-
-
+void fork_ret()
+{
+    prepare_return();
+    PROC* p = myproc();
+    uint32 satp = p->pagetable ;
+    userret(satp);
+}
 
 // freeproc() - free all pages occupied by the proc , free its trapframe , free the proc structure 
-void freeproc(uint32* pagetable)
-{
-    
-}
 // proc related syscalls 
 // sleep()
 // wait()

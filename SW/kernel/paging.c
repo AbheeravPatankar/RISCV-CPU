@@ -63,7 +63,7 @@ int page_free(PAGE* page_addr)
 }
 
 //free all the pages
-void initpaging()
+void paginginit()
 {
     for(unsigned int i = UMEM_START; i < UMEM_END; i+= PAGE_SIZE)
     {

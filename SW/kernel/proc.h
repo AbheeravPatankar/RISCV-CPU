@@ -12,7 +12,6 @@
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 struct trapframe {
-  unsigned int kernel_satp;   // kernel page table
   unsigned int kernel_sp;     // top of process's kernel stack
   unsigned int kernel_trap;   // usertrap()
   unsigned int epc;           // saved user program counter
@@ -103,6 +102,18 @@ typedef struct segment_header
   uint32 memsz;  // size in mem that the segment will occupy
 }SEGMENT_HEADER;
 
+typedef struct cpu
+{
+  PROC* current_proc;
+  struct context context;
+  int int_ena;
+}CPU;
+
+
 void procinit(void);
 
 void userinit(void);
+
+void scheduler();
+
+void swtch(struct context* old, struct context* new);

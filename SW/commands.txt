@@ -21,3 +21,7 @@ make clean ; make ;make debug
 
 ***********Trigger gdb with remote connection 
 riscv32-unknown-elf-gdb -ex "target remote :1234" ./kernel
+
+***********Get value info on CSRs *************************
+info registers <REG>
+e.g ( info registers mstatus ) 

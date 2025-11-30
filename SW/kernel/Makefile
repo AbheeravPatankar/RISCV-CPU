@@ -13,8 +13,8 @@ ASFLAGS = $(CFLAGS)
 LDSCRIPT = kernel.ld
 
 # Add all your C source files here
-SRCS_C   = main.c paging.c utils.c proc.c
-SRCS_ASM = entry.S trampoline.S
+SRCS_C   = main.c paging.c utils.c proc.c timer.c scheduler.c trap.c
+SRCS_ASM = entry.S trampoline.S swtch.S
 
 OBJS_C   = $(SRCS_C:.c=.o)
 OBJS_ASM = $(SRCS_ASM:.S=.o)
