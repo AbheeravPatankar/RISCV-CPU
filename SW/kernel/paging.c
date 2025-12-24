@@ -1,4 +1,6 @@
 #include "paging.h"
+#include "trap.h"
+
 
 struct page_list
 {
@@ -8,40 +10,41 @@ struct page_list
 int set_perms(char* code)
 {
 
-    int perms_bin[5];
+    int perms_bin = 0;
     for(int i = 0 ; i < 5; i++)
     {
-        perms_bin[i] = 0;
-    }
-
-
-    for(int i = 0 ; i < 5; i++)
-    {
-        switch(code[i])
+        if (code[i] == 'U') 
         {
-            case 'V':
-                perms_bin[4] = 1;
-                break;
-            case 'R':
-                perms_bin[3] = 1;
-                break;
-            case 'W':
-                perms_bin[2] = 1;
-                break;
-            case 'X':
-                perms_bin[1] = 1;
-                break;
-            case 'U':
-                perms_bin[0] = 1;
-                break;
-            default :
-                return ;
+            perms_bin += 16;
         }
-        
-        int perms = binaryToDecimal(perms_bin, 5);
-        return perms;
-        
+        else if (code[i] == 'X') 
+        {
+            perms_bin += 8;
+        }
+        else if (code[i] == 'W') 
+        {
+            perms_bin += 4;
+        }
+        else if (code[i] == 'R') 
+        {
+            perms_bin += 2;
+        }
+        else if (code[i] == 'V') 
+        {
+            perms_bin += 1;
+        }
+        else
+        {
+            break;
+        }   
     }
+    return perms_bin;
+}
+
+// checks if the page table entry is valid  
+int is_pte_valid(uint32 pte)
+{
+    return pte & 1;
 }
 
 int page_free(PAGE* page_addr)
@@ -53,7 +56,7 @@ int page_free(PAGE* page_addr)
         return 1;
     }
 
-    //else scrub the page and attach to page_list
+    // else scrub the page and attach to page_list
     memstr((uint32*)page_addr, 0 , PAGE_SIZE);
     PAGE* temp = umem.free_page;
     umem.free_page = page_addr;
@@ -62,7 +65,7 @@ int page_free(PAGE* page_addr)
     return 0;
 }
 
-//free all the pages
+// free all the pages
 void paginginit()
 {
     for(unsigned int i = UMEM_START; i < UMEM_END; i+= PAGE_SIZE)
@@ -79,53 +82,99 @@ PAGE* alloc_page()
     umem.free_page = temp;
     return free_page;
 }
-// function to create a page table
 
+// function to create a page table 
 PAGE* create_page_table()
 {
     PAGE* ptr_to_page = alloc_page();
     return ptr_to_page;
 }
 
-// take the va and size, and allocate pages and create page table entries .
-// Basically create page table for a certain process 
-void map_vm(uint32* pagetable, uint32 va, uint32 size, int perms )
+// gets the internal page number (top-level index: VA[31:22])
+uint32 get_internal_page_no(uint32 va)
 {
+    return (va >> 22) & 0x3FF;
+}
+
+// gets the external page number (second-level index: VA[21:12])
+uint32 get_leaf_page_no(uint32 va)
+{
+    return (va >> 12) & 0x3FF;
+}
+
+// extract the pa from a pte   * this also works as page round down function 
+uint32 extract_pa_from_pte(uint32 pte)  
+{
+    // Zero out the lowest 12 bits (mask with ~0xFFF)
+    return pte & ~0xFFF;
+}
+
+// extract only the perms from the pte
+uint32 extract_perms_from_pte(uint32 pte)
+{
+    // Zero out the lowest 12 bits (mask with ~0xFFF)
+    return pte & 0xFFF;
+}
+
+// Given va check if the page is allocated for the va if not allocate pages and ptes in both internal and leaf pagetables  
+uint32* va_to_pte(uint32* pagetable, uint32 va)
+{
+    uint32 internal_page_no = get_internal_page_no(va);
+    uint32 internal_pte = pagetable[internal_page_no];
+
+    // check if internal pte
+    uint32* leaf_pagetable;
+    if(!is_pte_valid(internal_pte))
+    {
+        uint32* pa = alloc_page();
+        memstr((char*)pa, 0, PAGE_SIZE);
+        pagetable[internal_page_no] = (uint32)pa + set_perms("UV");
+        leaf_pagetable = pa;
+
+    } 
+    uint32 leaf_page_no = get_leaf_page_no(va);
+    uint32 leaf_pte =  leaf_pagetable[leaf_page_no];
+
+    // check if the leaf pte is valid
+    uint32 pte ;
+    if(!is_pte_valid(leaf_pte))
+    {
+        uint32* pa = alloc_page();
+        memstr((char*)pa, 0, PAGE_SIZE);
+        pagetable[internal_page_no] = (uint32)pa + set_perms("UV");
+        pte = pa + set_perms("UV");
+
+    }
+    return pte;
+} 
+
+// takes a page aligned virtual address and size of memory and allocates contiguous physical pages  
+void map_vm(uint32* pagetable, uint32 va, int size, int perms )
+{
+    // check if the virtual address is non negative and page aligned 
     PAGE* pa = NULL;
     int pt_index = 0;
     if(size < 0 || va % PAGE_SIZE != 0)
     {
         return ;
     }
-    while(size >= PAGE_SIZE)
+    do
     {
-        pa = alloc_page(); // page is the pa 
-        pt_index = va / PAGE_SIZE;
-        pagetable[pt_index] = (uint32)pa + perms ;
-        //scrub the page 
-        memstr((char*)pa, 0, PAGE_SIZE);
+        // check if page is already allocated and allocate pages and ptes if not already 
+        va_to_pte(pagetable , va);        
         va += PAGE_SIZE;
         size -= PAGE_SIZE;
-    }
+           
+    }while(size > 0);
 }
-
-// Given va convert to pa and return pa
-uint32* va_to_pa(uint32* pagetable, uint32 va)
-{
-    int pt_index = va / PAGE_SIZE;
-    uint32 pa = pagetable[pt_index]; 
-    // remove the perms bits
-    pa = pa - (pa % PAGE_SIZE);
-    uint32 offset = va % PAGE_SIZE;
-    return (uint32*)(pa + offset);    
-} 
 
 // function to copy data from kernel space to user space
 void copyout(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size)
 {
     while( size > 0 )
     {
-        uint32* u_pa = va_to_pa(pagetable, u_va);
+        uint32 pte = va_to_pte(pagetable, u_va);
+        uint32* u_pa = extract_pa_from_pte(pte);
         int size_temp = min(PAGE_SIZE - ((uint32)u_pa % PAGE_SIZE) , size);
         k_memcpy((char*)u_pa, (char*)k_pa, size_temp);
         u_va = (char*)u_va + size_temp;
@@ -133,13 +182,14 @@ void copyout(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size)
         size -= size_temp;
     }
 }
-// function to copy data from user space to kernel space 
 
+// function to copy data from user space to kernel space 
 void copyin(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size)
 {
     while( size > 0 )
     {
-        uint32* u_pa = va_to_pa(pagetable, u_va);
+        uint32 pte = va_to_pte(pagetable, u_va);
+        uint32* u_pa = extract_pa_from_pte(pte);
         int size_temp = min(PAGE_SIZE - ((uint32)u_pa % PAGE_SIZE) , size);
         k_memcpy((char*)k_pa, (char*) u_pa, size_temp);
         u_va += size_temp;
@@ -148,33 +198,73 @@ void copyin(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size)
     }
 }
 
-// free a given page table ( entries and pages ) 
+// free a given page table ( entries and pages )
 void unmap_vm(uint32* pagetable)
 {
-    for(int i = 0 ; i < PAGE_SIZE / 4; i++)
+    for(int i = 0 ; i < MAX_PTE; i++)
+    {    
+        if(is_pte_valid(pagetable[i]))
+        {   
+            uint32* leaf_pagetable = extract_pa_from_pte( pagetable[i] );
+            for(int j = 0 ; j < MAX_PTE; j++)
+            {
+                if(is_pte_valid(leaf_pagetable[j]))
+                {
+                    page_free(extract_pa_from_pte(leaf_pagetable[j]));
+                }
+            }
+            page_free(extract_pa_from_pte(leaf_pagetable));
+        }    
+    }
+    page_free(pagetable);
+}
+
+// make an entry in the pagetable given va find the pt index and insert the pa and the perms 
+void map_va_to_pa(uint32* pagetable, uint32 va, uint32* pa, int perms)
+{
+    // check and allocate space for the va
+    uint32 round_down_va = extract_pa_from_pte(va);
+    uint32* leaf_pagetable = pagetable[ get_internal_page_no(round_down_va) ];
+    uint32 leaf_pt_index = get_leaf_page_no(round_down_va);
+    leaf_pagetable[leaf_pt_index] = (uint32)pa + perms ;
+    return ;
+}   
+
+// copy entire pagetable and the pages allocated to the process
+void copy_proc_mem(uint32* parent_pagetable, uint32* child_pagetable)
+{
+    // iterate over all the entries in the parent pagetable 
+    for(int i = 1; i < MAX_PTE; i++)
     {
-        if(pagetable[i] % 2 == 1)
+        // check if this entry is valid 
+        if(is_pte_valid(parent_pagetable[i]))
         {
-            // if entry is valid call free on the page
-            uint32* page_addr = (uint32*) ((uint32)pagetable[i] / PAGE_SIZE );
-            page_free((PAGE*)page_addr);
+            // load the lead pagetable
+            uint32* leaf_pagetable = extract_pa_from_pte(parent_pagetable[i]);
+            for(int j = 0; j < MAX_PTE; j++)
+            {
+                // check if the lead entry is valid
+                if(is_pte_valid(leaf_pagetable[j]))
+                {
+                    // actually copy the mem contents 
+                    uint32 va = (i << (22)) | (j << 12);
+                    map_vm(child_pagetable, va,PAGE_SIZE, extract_perms_from_pte(leaf_pagetable[j]));
+                    uint32 child_pa = va_to_pte(child_pagetable, va);
+                    child_pa = extract_pa_from_pte(child_pa);
+                    k_memcpy(child_pa, extract_pa_from_pte(parent_pagetable[j]), PAGE_SIZE);
+                }
+            }
+
         }
-           
     }
 }
 
-// map a given va to a given pa 
-void map_va_to_pa(uint32* pagetable, uint32 va, uint32* pa, int perms)
+// map the trampoline section to the user page table
+void map_trampoline_and_trapframe(uint32* pagetable, uint32* trapframe)
 {
-    // check if both va and pa are page aligned 
-    if(va % PAGE_SIZE != 0)
-    {
-        return ;
-    }
-    if( (uint32)pa % PAGE_SIZE != 0)
-    {
-        return ;
-    }
-    int pt_index = va / PAGE_SIZE;
-    pagetable[pt_index] = (uint32)pa + perms;
+    // map the trampoline page at va = 0x0000 
+    map_va_to_pa(pagetable, 0x000, trampoline, set_perms("XUV"));
+
+    // map the trapframe page
+    map_va_to_pa(pagetable, PAGE_SIZE, trapframe , set_perms("RWUV")); 
 }

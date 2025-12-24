@@ -95,13 +95,13 @@ def print_header_structure(elf_path, output_file="header.c"):
     # Calculate sizes and offsets
     text_address = text_info['address']
     text_size = text_info['size']
-    text_memsz = align_up(text_size, 256)  # Round up to multiple of 256
+    text_memsz = align_up(text_size, 4096)  # Round up to multiple of 4096
 
     # Data section info
     if first_data_addr is not None:
         data_address = first_data_addr
         data_filesz = total_data_size
-        data_memsz = align_up(data_filesz, 256)
+        data_memsz = align_up(data_filesz, 4096)
     else:
         data_address = 0
         data_filesz = 0
@@ -115,46 +115,48 @@ def print_header_structure(elf_path, output_file="header.c"):
     content.append("")
     content.append("typedef struct elf_header")
     content.append("{")
-    content.append("uint32 magic;")
-    content.append("uint32 entry;")
-    content.append("int segment_count;")
-    content.append("uint32 segment_offset;")
-    content.append("}ELF_HEADER;")
+    content.append("    uint32 magic;")
+    content.append("    uint32 entry;")
+    content.append("    int segment_count;")
+    content.append("    uint32 segment_offset;")
+    content.append("} ELF_HEADER;")
     content.append("")
     content.append("typedef struct segment_header")
     content.append("{")
-    content.append("int flags;")
-    content.append("uint32 offset;")
-    content.append("uint32 vaddr;")
-    content.append("uint32 filesz;")
-    content.append("uint32 memsz;")
-    content.append("}SEGMENT_HEADER;")
+    content.append("    int flags;")
+    content.append("    uint32 offset;")
+    content.append("    uint32 vaddr;")
+    content.append("    uint32 filesz;")
+    content.append("    uint32 memsz;")
+    content.append("} SEGMENT_HEADER;")
     content.append("")
     content.append("__asm__(\".section .header,\\\"aw\\\",@progbits\");")
     content.append("__asm__(\".align 16\");")
     content.append("")
-    # ELF_HEADER FIRST
-    content.append(
-        f"ELF_HEADER elf_header __attribute__((section(\".header\"), aligned(16))) = {{1234, 0x{main_address:08x}, 2, 16}};")
+
+    # ELF_HEADER
+    content.append(f"ELF_HEADER elf_header __attribute__((section(\".header\"), aligned(16))) = {{1234, 0x{main_address:08x}, 2, 16}};")
     content.append("")
-    # SEGMENT_HEADER SECOND
+
+    # SEGMENT_HEADER array
     content.append("SEGMENT_HEADER segment_header[2] __attribute__((section(\".header\"), aligned(16))) = {")
-    content.append(" {")
-    content.append(f"4, 0x{text_address + 0x40:08x}, 0x00, {text_size}, {text_memsz}")
-    content.append(" },")
-    content.append(" {")
-    content.append(f"4, 0x{data_address + 0x40:08x}, 0x00, {data_filesz}, {data_memsz}")
-    content.append(" }")
+    content.append("    {")
+    content.append(f"        4, 0x{text_address + 0x40:08x}, 0x{text_address:08x}, {text_size}, {text_memsz}")
+    content.append("    },")
+    content.append("    {")
+    content.append(f"        4, 0x{data_address + 0x40:08x}, 0x{data_address:08x}, {data_filesz}, {data_memsz}")
+    content.append("    }")
     content.append("};")
     content.append("")
-    # Add padding to make text section start at offset 0x40 (64 bytes)
+
+    # Padding
     content.append("char padding[8] __attribute__((section(\".header\"))) = {0};")
 
     # Write to file
     with open(output_file, 'w') as f:
         f.write('\n'.join(content) + '\n')
 
-    # Also print to stdout
+    # Print to stdout
     for line in content:
         print(line)
 
@@ -164,72 +166,7 @@ def print_header_structure(elf_path, output_file="header.c"):
 
 def generate_header_c_file(elf_path, output_c_path):
     """Generate a proper C file with the header structure."""
-
-    # Analyze the ELF file
-    text_info = get_section_info(elf_path, '.text')
-    main_address = get_main_address(elf_path)
-    first_data_addr, total_data_size, data_sections, last_data_addr = analyze_data_sections(elf_path)
-
-    if not text_info:
-        print("ERROR: .text section not found!")
-        return False
-
-    if main_address is None:
-        print("ERROR: main function not found!")
-        return False
-
-    # Calculate sizes and offsets
-    text_address = text_info['address']
-    text_size = text_info['size']
-    text_memsz = align_up(text_size, 256)
-
-    # Data section info
-    if first_data_addr is not None:
-        data_address = first_data_addr
-        data_filesz = total_data_size
-        data_memsz = align_up(data_filesz, 256)
-    else:
-        data_address = 0
-        data_filesz = 0
-        data_memsz = 0
-
-    # Generate proper C file with ELF_HEADER first
-    with open(output_c_path, 'w') as f:
-        f.write("typedef unsigned int uint32;\n")
-        f.write("struct elf_header\n")
-        f.write("{\n")
-        f.write("uint32 magic;\n")
-        f.write("uint32 entry; // address of main function in the program\n")
-        f.write("int segment_count; // Number of segments this executable has\n")
-        f.write("uint32 segment_offset; // offset from where the segment headers can be read\n")
-        f.write("}__attribute__((packed)) ELF_HEADER;\n")
-        f.write("struct segment_header\n")
-        f.write("{\n")
-        f.write("int flags;\n")
-        f.write("uint32 offset; // address in the executable where the section starts\n")
-        f.write("uint32 vaddr; // address in the program where this segment is to be loaded\n")
-        f.write("uint32 filesz; // size of the segment\n")
-        f.write("uint32 memsz; // size in mem that the segment will occupy\n")
-        f.write("}__attribute__((packed)) SEGMENT_HEADER[2];\n")
-        # ELF_HEADER definition comes first
-        f.write(
-            f"ELF_HEADER = {{/* magic */1234,/*offset get from python file */0x{main_address:08x} ,/*segment_count*/ 2, /* segment_offset */ 16}} ;\n")
-        # SEGMENT_HEADER definition comes second
-        f.write("SEGMENT_HEADER = {\n")
-        f.write(" {\n")
-        f.write(
-            f" /*flags = execute */ 4, /*offset -- address of the text section obtained from the python script*/ 0x{text_address + 0x40:08x} , /*vaddr*/ 0x00, /*filesz obtain the size of the .text segment */ {text_size}, /*memsz round the filesz up to multiple of 256 */ {text_memsz}\n")
-        f.write(" },\n")
-        f.write(" {\n")
-        f.write(
-            f" /*flags = execute */ 4, /*offset -- address of the first data section from the python script*/ 0x{data_address + 0x40:08x} , /*vaddr*/ 0x00, /*filesz obtain the added size of the . data segments */ {data_filesz}, /*memsz round the filesz up to multiple of 256 */ {data_memsz}\n")
-        f.write(" }\n")
-        f.write(" };\n")
-        # Add padding to make text section start at offset 0x40 (64 bytes)
-        f.write("char padding[24] __attribute__((section(\".header\"))) = {0};\n")
-
-    print(f"\nGenerated C file: {output_c_path}")
-    return True
+    return print_header_structure(elf_path, output_c_path)
 
 
 def compile_and_extract_header(c_file, output_bin):
@@ -285,10 +222,6 @@ def attach_header_to_binary(header_bin, original_bin, output_bin):
 def main():
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} <elf_file> [binary_file] [output_file]")
-        print(f"\nMode 1 - Print header structure only:")
-        print(f"  {sys.argv[0]} <elf_file>")
-        print(f"\nMode 2 - Generate C file and attach to binary:")
-        print(f"  {sys.argv[0]} <elf_file> <binary_file> [output_file]")
         sys.exit(1)
 
     elf_path = sys.argv[1]
@@ -330,15 +263,9 @@ def main():
         sys.exit(1)
 
     # Attach header to binary
-    if not attach_header_to_binary(header_bin, original_bin, output_bin):
+    if not attach_header_to_binary(header_bin, binary_path, output_path):
         print("Failed to attach header")
         sys.exit(1)
-
-    # Clean up temporary files (optional - comment out if you want to keep them)
-    # if os.path.exists(header_c):
-    #     os.remove(header_c)
-    # if os.path.exists(header_bin):
-    #     os.remove(header_bin)
 
     print("\n" + "=" * 70)
     print("SUCCESS! Header attached successfully.")

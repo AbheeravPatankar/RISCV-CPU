@@ -4,7 +4,7 @@ _start:
     li      sp, 0x87FFFFFC
 
     # Call main
-    call    main
+    call    start
 
     # Infinite loop after main returns
 1:

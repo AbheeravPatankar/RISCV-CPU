@@ -7,27 +7,37 @@ CC   = $(ARCH)-gcc
 OBJDUMP = $(ARCH)-objdump
 GDB  = $(ARCH)-gdb
 
-CFLAGS = -g -w -ffreestanding -fno-pic -fno-builtin -march=rv32i -mabi=ilp32 -nostdlib
+CFLAGS  = -g -w -ffreestanding -fno-pic -fno-builtin \
+          -march=rv32i -mabi=ilp32 -nostdlib
 ASFLAGS = $(CFLAGS)
 
 LDSCRIPT = kernel.ld
 
-# Add all your C source files here
-SRCS_C   = main.c paging.c utils.c proc.c timer.c scheduler.c trap.c
+# Source files
+SRCS_C   = main.c paging.c utils.c proc.c timer.c scheduler.c trap.c start.c kernel_vm.c
 SRCS_ASM = entry.S trampoline.S swtch.S
 
 OBJS_C   = $(SRCS_C:.c=.o)
 OBJS_ASM = $(SRCS_ASM:.S=.o)
 OBJS     = $(OBJS_ASM) $(OBJS_C)
 
-PROG     = kernel
+PROG = kernel
 
-# User program configuration
-USER_BIN = /home/abheerav/RISCV-CPU/SW/user/RV32_test.bin
+# User program
+USER_BIN  = /home/abheerav/RISCV-CPU/SW/user/RV32_test.bin
 USER_ADDR = 0x800FC400
 
 QEMU = qemu-system-riscv32
-QEMU_FLAGS = -machine virt -nographic -bios none -kernel $(PROG) -device loader,file=$(USER_BIN),addr=$(USER_ADDR)
+
+# ------------------------------
+# QEMU flags (NO logging)
+# ------------------------------
+QEMU_FLAGS = \
+	-machine virt \
+	-nographic \
+	-bios none \
+	-kernel $(PROG) \
+	-device loader,file=$(USER_BIN),addr=$(USER_ADDR)
 
 # ==============================
 # Rules

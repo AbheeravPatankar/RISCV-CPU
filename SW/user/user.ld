@@ -1,45 +1,54 @@
 OUTPUT_ARCH(riscv)
 ENTRY(_entry)
+
 SECTIONS
 {
-    /* --- Code (.text) section starts at 0x0000 --- */
-    .text 0x00000000 : ALIGN(32)
+    /* -------------------------------------------------- */
+    /* User program starts at VA = 0x2000 (8 KB)          */
+    /* Page 0: trampoline (0x0000–0x0FFF)                 */
+    /* Page 1: trapframe  (0x1000–0x1FFF)                 */
+    /* -------------------------------------------------- */
+    . = 0x2000;
+
+    /* --- Code (.text) --- */
+    .text : ALIGN(16)
     {
         *(.text*)
     }
-    
-    /* --- Read-only data (.rodata) follows .text --- */
+
+    /* --- Read-only data --- */
     .rodata : ALIGN(4)
     {
         *(.rodata*)
         *(.rodata.*)
-        *(.srodata*)      /* Small read-only data */
+        *(.srodata*)
         *(.srodata.*)
     }
-    
-    .sdata  : ALIGN(4)
+
+    /* --- Small initialized data --- */
+    .sdata : ALIGN(4)
     {
-        __global_pointer$ = . + 0x800;  /* GP register base (optional) */
+        __global_pointer$ = . + 0x800;
         *(.sdata*)
         *(.sdata.*)
     }
-    
-    /* --- Initialized Data follows .sdata --- */
+
+    /* --- Initialized data --- */
     .data : ALIGN(4)
     {
         *(.data*)
         *(.data.*)
     }
-    
-    /* --- Small Uninitialized Data follows .data --- */
+
+    /* --- Small uninitialized data --- */
     .sbss (NOLOAD) : ALIGN(4)
     {
         *(.sbss*)
         *(.sbss.*)
         *(.scommon)
     }
-    
-    /* --- Uninitialized Data follows .sbss --- */
+
+    /* --- Uninitialized data --- */
     .bss (NOLOAD) : ALIGN(4)
     {
         *(.bss*)

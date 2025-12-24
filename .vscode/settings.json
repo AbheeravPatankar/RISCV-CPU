@@ -3,6 +3,7 @@
         "stddef.h": "c",
         "proc.h": "c",
         "paging.h": "c",
-        "utils.h": "c"
+        "utils.h": "c",
+        "trap.h": "c"
     }
 }

@@ -64,3 +64,38 @@ int binaryToDecimal(int* arr, int size)
     }
     return decimal;
 }
+
+// copy the chars from src to dest until we hit a '\0' char
+void k_strcpy(char* dest, char* src)
+{
+    uint32 index = 0;
+    while(src[index])
+    {
+        dest[index] = src[index];
+        index++;
+    }
+    // append the NULL char at the end 
+    
+    dest[index+1] = '\0';
+    return ;
+}
+
+int strcmp(char* str1, char*str2)
+{
+    uint32 counter = 0;
+    while(str1[counter] != '\0')
+    {
+        if(str2[counter] == '\0')
+            return 0;
+        if(str1[counter] != str2[counter])
+            return 0;
+
+        counter++;
+    }
+
+    if(str2[counter] != '\0')
+            return 0;
+    else
+        return 1;
+    
+}

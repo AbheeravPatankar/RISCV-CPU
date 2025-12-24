@@ -2,18 +2,15 @@
 
 #include "utils.h"
 #include "paging.h"
-#include "uart.h"
 
 #define MAX_PROC 10
-#define KMEM_START 2147483648
-#define KMEM_SIZE  1048576 // 1 MB
-
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 struct trapframe {
   unsigned int kernel_sp;     // top of process's kernel stack
   unsigned int kernel_trap;   // usertrap()
+  unsigned int kernel_satp;
   unsigned int epc;           // saved user program counter
   unsigned int kernel_hartid; // saved kernel tp
   unsigned int ra;
@@ -75,7 +72,7 @@ typedef struct proc
     int killed;
     int xstatus;
     int pid;
-    uint32*  kstatck;
+    uint32*  kstack;
     unsigned int size;
     struct proc* parent;
     uint32*  pagetable;
@@ -117,3 +114,7 @@ void userinit(void);
 void scheduler();
 
 void swtch(struct context* old, struct context* new);
+
+int exec(char* name);
+
+void fork_ret();
