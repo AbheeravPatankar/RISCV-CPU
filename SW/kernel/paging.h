@@ -6,8 +6,8 @@
 #define MAX_PTE    1024
 
  // For QEMU
-#define UMEM_START 0x80005000   
-#define UMEM_END   0x80200000
+#define UMEM_START 0x80006000   
+#define UMEM_END   0x80201000
 // For my hardware
 /*
 #define UMEM_START 2048    

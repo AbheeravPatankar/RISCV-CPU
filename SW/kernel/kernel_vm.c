@@ -122,13 +122,17 @@ void init_kernel_paging()
         va += PAGE_SIZE;
     }
 
+    // also map the timer register M_TIME and M_CMP 
+    map_kva_to_kpa(0x02004000);
+    map_kva_to_kpa(0x0200BFF8);
+
     // write the satp register to enable paging in kernel 
     uint32 root_pa  = (uint32)kernel_pagetable;  // ROOT page table
     uint32 root_ppn = root_pa >> 12;
 
     uint32 satp = (1U << 31) | root_ppn;   // MODE = Sv32
 
-    sv32_va_to_pa(satp, 0x87ffffb0);
+    uint32 test = sv32_va_to_pa(satp, 0x801fe000);
 
     asm volatile ("csrw satp, %0" :: "r"(satp));
     asm volatile ("sfence.vma zero, zero");

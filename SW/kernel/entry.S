@@ -1,7 +1,7 @@
     .section .text.entry
     .global _start
 _start:
-    li      sp, 0x87FFFFFC
+    li      sp, 0x80006000
 
     # Call main
     call    start
