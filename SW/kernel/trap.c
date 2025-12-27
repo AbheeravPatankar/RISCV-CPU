@@ -2,7 +2,10 @@
 #include "proc.h"
 #include "paging.h"
 
-extern char trampoline[], uservec[];
+// Needs to set these addresses 
+char* trampoline = 0x00000000;
+char* userret = 0x000000ac;
+char* uservec = 0x00000000;
 
 void prepare_return(void)
 {
@@ -18,16 +21,12 @@ void prepare_return(void)
     PROC *p = myproc();
     p->ptr_to_trapframe->kernel_sp = p->kstack + PAGE_SIZE;
 
-    if (is_first) {
+    if (is_first) 
+    {
         is_first = 0;
         exec("init");
     }
 
-    /* 
-     * Set:
-     *  - SPP = 0 (return to U-mode)
-     *  - SPIE = 1 (enable interrupts after sret)
-     */
     uint32 x;
     asm volatile ("csrr %0, sstatus" : "=r"(x));
     x &= ~(1 << 8);   // clear SPP (return to U-mode)

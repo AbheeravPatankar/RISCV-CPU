@@ -1,6 +1,7 @@
 #include "paging.h"
 #include "trap.h"
 
+extern char* trampoline ;
 
 struct page_list
 {
@@ -106,18 +107,18 @@ uint32 get_leaf_page_no(uint32 va)
 uint32 extract_pa_from_pte(uint32 pte)  
 {
     // Zero out the lowest 12 bits (mask with ~0xFFF)
-    return pte & ~0xFFF;
+    return (pte >> 10) << 12;
 }
 
 // extract only the perms from the pte
 uint32 extract_perms_from_pte(uint32 pte)
 {
     // Zero out the lowest 12 bits (mask with ~0xFFF)
-    return pte & 0xFFF;
+    return pte & 0x3FF;
 }
 
 // Given va check if the page is allocated for the va if not allocate pages and ptes in both internal and leaf pagetables  
-uint32* va_to_pte(uint32* pagetable, uint32 va)
+uint32 va_to_pte(uint32* pagetable, uint32 va)
 {
     uint32 internal_page_no = get_internal_page_no(va);
     uint32 internal_pte = pagetable[internal_page_no];
@@ -128,9 +129,13 @@ uint32* va_to_pte(uint32* pagetable, uint32 va)
     {
         uint32* pa = alloc_page();
         memstr((char*)pa, 0, PAGE_SIZE);
-        pagetable[internal_page_no] = (uint32)pa + set_perms("UV");
+        pagetable[internal_page_no] = (((uint32)pa >> 12) << 10) | (set_perms("UV"));
         leaf_pagetable = pa;
 
+    }
+    else
+    {
+        leaf_pagetable = extract_pa_from_pte(internal_pte);
     } 
     uint32 leaf_page_no = get_leaf_page_no(va);
     uint32 leaf_pte =  leaf_pagetable[leaf_page_no];
@@ -141,11 +146,10 @@ uint32* va_to_pte(uint32* pagetable, uint32 va)
     {
         uint32* pa = alloc_page();
         memstr((char*)pa, 0, PAGE_SIZE);
-        pagetable[internal_page_no] = (uint32)pa + set_perms("UV");
-        pte = pa + set_perms("UV");
-
+        leaf_pagetable[leaf_page_no] = (((uint32)pa >> 12) << 10) | (set_perms("RWXUV"));
+        uint32 pte = leaf_pagetable[leaf_page_no];
     }
-    return pte;
+    return leaf_pagetable[leaf_page_no];
 } 
 
 // takes a page aligned virtual address and size of memory and allocates contiguous physical pages  
@@ -174,8 +178,10 @@ void copyout(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size)
     while( size > 0 )
     {
         uint32 pte = va_to_pte(pagetable, u_va);
-        uint32* u_pa = extract_pa_from_pte(pte);
+        uint32 u_pa = extract_pa_from_pte(pte);
         int size_temp = min(PAGE_SIZE - ((uint32)u_pa % PAGE_SIZE) , size);
+        uint32 offset = u_va & 0xFFF;
+        u_pa = u_pa + offset;
         k_memcpy((char*)u_pa, (char*)k_pa, size_temp);
         u_va = (char*)u_va + size_temp;
         k_pa =(char*)k_pa + size_temp;
@@ -189,8 +195,10 @@ void copyin(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size)
     while( size > 0 )
     {
         uint32 pte = va_to_pte(pagetable, u_va);
-        uint32* u_pa = extract_pa_from_pte(pte);
+        uint32 u_pa = extract_pa_from_pte(pte);
+        uint32 offset = u_va & 0xFFF;
         int size_temp = min(PAGE_SIZE - ((uint32)u_pa % PAGE_SIZE) , size);
+        u_pa = u_pa + offset;
         k_memcpy((char*)k_pa, (char*) u_pa, size_temp);
         u_va += size_temp;
         k_pa += size_temp;
@@ -220,13 +228,14 @@ void unmap_vm(uint32* pagetable)
 }
 
 // make an entry in the pagetable given va find the pt index and insert the pa and the perms 
-void map_va_to_pa(uint32* pagetable, uint32 va, uint32* pa, int perms)
+void map_va_to_pa(uint32* pagetable, uint32 va, uint32 pa, int perms)
 {
     // check and allocate space for the va
-    uint32 round_down_va = extract_pa_from_pte(va);
-    uint32* leaf_pagetable = pagetable[ get_internal_page_no(round_down_va) ];
-    uint32 leaf_pt_index = get_leaf_page_no(round_down_va);
-    leaf_pagetable[leaf_pt_index] = (uint32)pa + perms ;
+    uint32 vpn1 = get_internal_page_no(va);
+    uint32 vpn0 = get_leaf_page_no(va);
+
+    uint32* internal_pagetable =  extract_pa_from_pte( pagetable[vpn1] );
+    internal_pagetable[vpn0] = (((uint32)pa >> 12) << 10) | perms ;
     return ;
 }   
 
@@ -262,9 +271,12 @@ void copy_proc_mem(uint32* parent_pagetable, uint32* child_pagetable)
 // map the trampoline section to the user page table
 void map_trampoline_and_trapframe(uint32* pagetable, uint32* trapframe)
 {
-    // map the trampoline page at va = 0x0000 
-    map_va_to_pa(pagetable, 0x000, trampoline, set_perms("XUV"));
+    // map the trampoline page at va = 0x0000
+    map_vm(pagetable,0x000, PAGE_SIZE, set_perms("UXV"));
+    map_va_to_pa(pagetable, 0x000, 0x80003000, set_perms("RWXUV"));
 
     // map the trapframe page
+    map_vm(pagetable,PAGE_SIZE, PAGE_SIZE, set_perms("RWUV"));
     map_va_to_pa(pagetable, PAGE_SIZE, trapframe , set_perms("RWUV")); 
+    return ;
 }

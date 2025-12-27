@@ -1,3 +1,5 @@
+Error running command: riscv64-unknown-elf-objdump -h prog.elf | grep ' .srodata '
+
 /* This is a generated file */
 
 typedef unsigned int uint32;
@@ -34,3 +36,5 @@ SEGMENT_HEADER segment_header[2] __attribute__((section(".header"), aligned(16))
 };
 
 char padding[8] __attribute__((section(".header"))) = {0};
+
+Header written to: header.c

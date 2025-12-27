@@ -8,37 +8,23 @@ ENTRY(_start)
 SECTIONS
 {
     /* -------------------------------------------------- */
-    /* Kernel entry point (QEMU reset PC)                 */
+    /* Kernel loaded at 0x80000000 onward                 */
     /* -------------------------------------------------- */
-    . = ORIGIN(RAM);
+    . = 0x80000000;
 
+    /* Kernel entry point */
     .text.entry :
     {
         KEEP(*(.text.entry))
     } > RAM
 
-    /* -------------------------------------------------- */
-    /* Kernel text                                       */
-    /* -------------------------------------------------- */
+    /* Kernel text */
     .text :
     {
         *(.text*)
     } > RAM
 
-    /* -------------------------------------------------- */
-    /* Trampoline (placed AFTER kernel text)              */
-    /* -------------------------------------------------- */
-    . = ALIGN(0x1000);        /* page-align is important */
-    .trampoline :
-    {
-        __trampoline_start = .;
-        KEEP(*(.trampoline))
-        __trampoline_end = .;
-    } > RAM
-
-    /* -------------------------------------------------- */
-    /* Read-only data                                    */
-    /* -------------------------------------------------- */
+    /* Read-only data */
     .rodata :
     {
         . = ALIGN(0x10);
@@ -46,9 +32,7 @@ SECTIONS
         *(.srodata*)
     } > RAM
 
-    /* -------------------------------------------------- */
-    /* Initialized data                                  */
-    /* -------------------------------------------------- */
+    /* Initialized data */
     .data :
     {
         . = ALIGN(0x1000);
@@ -56,9 +40,7 @@ SECTIONS
         *(.sdata*)
     } > RAM
 
-    /* -------------------------------------------------- */
-    /* Zero-initialized data                             */
-    /* -------------------------------------------------- */
+    /* Zero-initialized data */
     .bss :
     {
         . = ALIGN(0x100);
@@ -70,7 +52,8 @@ SECTIONS
     /* -------------------------------------------------- */
     /* End-of-kernel markers                             */
     /* -------------------------------------------------- */
-    _stack_top = ORIGIN(RAM) + LENGTH(RAM);
     . = ALIGN(0x10);
     _end = .;
+
+    _stack_top = ORIGIN(RAM) + LENGTH(RAM);
 }

@@ -2,7 +2,8 @@
 #include "trap.h"
 #include "uart.h"
 #include "kernel_vm.h"
-// function to allocate new pid for the process
+
+extern char* userret;
 
 PROC processes[MAX_PROC];
 
@@ -23,6 +24,13 @@ uint32 size_roundup(uint32 size)
         size = PAGE_SIZE * (size / PAGE_SIZE + 1);
         return size;
     }
+}
+
+uint32 size_rounddown(uint32 size)
+{
+    if(size % PAGE_SIZE == 0)
+        return size;
+    return (size / PAGE_SIZE) * PAGE_SIZE;
 }
 
 int alloc_pid(void)
@@ -102,22 +110,10 @@ int fork()
 // function to parse the segment header
 void parse_segment_header(SEGMENT_HEADER* seg_header, uint32* base_addr, PROC* p)
 { 
-    /*  psuedo Body for this function 
-        Given the vaddr of the segment check if a page is allocated for the vaddr
-        if page is allocated find a va for which page is not allocated and call map vm pass the remaining size of the segment
-        if page is not allocated pass the size_roundown(vaddr) as vaddr and size of the segment to map vm 
-        
-        call copyout to actually copy data 
-    
-    */
-
-   if(p->size + seg_header->filesz > size_roundup(p->size))
-    {
-        // more pages are required to accomodate the process
-        uint32 start_vaddr = size_roundup(p->size);
-        uint32 read_size = seg_header->filesz - (size_roundup(p->size) - p->size);
-        map_vm(p->pagetable,start_vaddr , read_size , set_perms("RWXUV"));
-    }
+    // more pages are required to accomodate the process
+    uint32 start_vaddr = size_rounddown(seg_header->vaddr);
+    uint32 read_size = seg_header->filesz + seg_header->vaddr - start_vaddr;
+    map_vm(p->pagetable,start_vaddr , read_size , set_perms("RWXUV"));
     // copy memory from the buffer to allocated pages
     // !NOTE copyout is not going to work for processes having segments larger that BUFFER_SIZE -- replace this with some uart read function  
     copyout(p->pagetable, (char*)base_addr + seg_header->offset, seg_header->vaddr, seg_header->filesz);
@@ -136,7 +132,7 @@ int exec(char* name)
 
     // write code to signal uart to get the elf header
     if(strcmp("init", name))
-        elf_header = (ELF_HEADER*)0x800FC400;
+        elf_header = (ELF_HEADER*) 0x80005000;
     else
         elf_header = get_proc_elf_header(name);
 
@@ -174,8 +170,8 @@ int exec(char* name)
 
     // allocate a stack page of user stack and assign to sp in trapframe 
     PAGE* ustack = alloc_page();
-    map_va_to_pa((uint32*)pagetable, size_roundup(p->size) , (uint32*)ustack, set_perms("RXUV"));
-    p->ptr_to_trapframe->sp = ustack;
+    map_va_to_pa((uint32*)pagetable, size_roundup(p->size) + 4096 * 2 , (uint32)ustack, set_perms("RWXUV"));
+    p->ptr_to_trapframe->sp = size_roundup(p->size) + 4096 * 2 + PAGE_SIZE;
 
 
     // asign the size of proc which is code + data + stack
@@ -185,7 +181,7 @@ int exec(char* name)
     map_trampoline_and_trapframe((uint32*) p->pagetable, (uint32*)p->ptr_to_trapframe);
     p->killed = 0;
     
-
+    
     // free all pages in the old pagetable
     if(old_pagetable != NULL)
         unmap_vm(old_pagetable);
@@ -214,8 +210,13 @@ void fork_ret()
     {
         p->parent = NULL;
     }
-    uint32 satp = p->pagetable ;
-    userret(satp);
+    uint32 root_pa  = (uint32)(p->pagetable);  // ROOT page table
+    uint32 root_ppn = root_pa >> 12;
+    uint32 satp = (1U << 31) | root_ppn;
+
+    uint32 test = sv32_va_to_pa(satp, 0x801fbfe0);
+    
+    ((void (*)(uint32))userret)(satp);
 }
 
 // freeproc() - free all pages occupied by the proc , free its trapframe , free the proc structure 

@@ -25,3 +25,7 @@ riscv32-unknown-elf-gdb -ex "target remote :1234" ./kernel
 ***********Get value info on CSRs *************************
 info registers <REG>
 e.g ( info registers mstatus ) 
+
+
+***********Print disassembly of a binary ******************
+riscv64-unknown-elf-objdump -d <program>

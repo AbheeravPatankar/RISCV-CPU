@@ -29,7 +29,7 @@ PAGE* create_page_table();
 
 void map_vm(uint32* pagetable, uint32 va, int size, int perms );
 
-uint32* va_to_pte(uint32* pagetable, uint32 va);
+uint32 va_to_pte(uint32* pagetable, uint32 va);
 
 void copyout(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size);
 
@@ -37,7 +37,7 @@ void copyin(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size);
 
 void unmap_vm(uint32* pagetable);
 
-void map_va_to_pa(uint32* pagetable, uint32 va, uint32* pa, int perms );
+void map_va_to_pa(uint32* pagetable, uint32 va, uint32 pa, int perms );
 
 void copy_proc_mem(uint32* parent_pagetable, uint32* child_pagetable);
 
