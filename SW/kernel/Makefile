@@ -18,7 +18,7 @@ LDSCRIPT = kernel.ld
 # Kernel source files
 # ------------------------------
 SRCS_C   = main.c paging.c utils.c proc.c timer.c scheduler.c trap.c start.c kernel_vm.c
-SRCS_ASM = entry.S swtch.S          # trampoline removed from kernel
+SRCS_ASM = entry.S swtch.S  timervec.S        # trampoline removed from kernel
 
 OBJS_C   = $(SRCS_C:.c=.o)
 OBJS_ASM = $(SRCS_ASM:.S=.o)
@@ -50,7 +50,8 @@ QEMU_FLAGS = \
 	-bios none \
 	-kernel $(PROG) \
 	-device loader,file=$(TRAMPOLINE_BIN),addr=0x80003000 \
-	-device loader,file=$(USER_BIN),addr=$(USER_ADDR)
+	-device loader,file=$(USER_BIN),addr=$(USER_ADDR) \
+	-d int -D qemu.log
 
 # ==============================
 # Rules
@@ -84,9 +85,12 @@ run: all
 	$(QEMU) $(QEMU_FLAGS)
 
 debug: all
+	@echo "Generating kernel objdump..."
+	$(OBJDUMP) -D -M numeric,no-aliases $(PROG) > $(PROG).dump
+	@echo "Objdump saved to $(PROG).dump"
 	$(QEMU) $(QEMU_FLAGS) -S -gdb tcp::1234
 
 clean:
-	rm -f *.o $(PROG) *.lst $(TRAMPOLINE_BIN)
+	rm -f *.o $(PROG) *.lst $(PROG).dump $(TRAMPOLINE_BIN)
 
 .PHONY: all disasm run debug clean

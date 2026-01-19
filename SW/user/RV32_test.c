@@ -34,13 +34,14 @@ int calc_sum(int* sum)
     }
 }
 
-
 int global_int = 10;
 char global_char = 'a';
 int main()
 {
+    
     int sum;
     populate(25);
-    calc_sum(&sum);
+    calc_sum(&sum);   
+
     return sum;
 }

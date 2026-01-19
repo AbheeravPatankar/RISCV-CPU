@@ -8,3 +8,5 @@
 void handle_mtimer();
 
 void timerinit();
+
+void timervec();

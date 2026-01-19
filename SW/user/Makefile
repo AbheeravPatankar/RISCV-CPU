@@ -4,6 +4,7 @@
 # Tools
 CC = riscv64-unknown-elf-gcc
 OBJCOPY = riscv64-unknown-elf-objcopy
+OBJDUMP = riscv64-unknown-elf-objdump
 PYTHON = python3
 
 # Compiler flags
@@ -23,6 +24,7 @@ HEADER_C = header.c
 HEADER_OBJ = header.o
 HEADER_BIN = header.bin
 ELF_INFO = elf_info.txt
+DUMP_FILE = prog.dump
 
 # Final output
 FINAL_BIN = final.bin
@@ -35,9 +37,10 @@ OUTPUT_BIN = $(basename $(USER_SRC)).bin
 
 # Default target
 .PHONY: all
-all: $(FINAL_BIN)
+all: $(FINAL_BIN) $(DUMP_FILE)
 	@echo "================================"
 	@echo "Build complete: $(FINAL_BIN)"
+	@echo "Objdump created: $(DUMP_FILE)"
 	@echo "================================"
 	@hexdump -C $(FINAL_BIN) | head -30
 	@echo ""
@@ -80,6 +83,12 @@ $(HEADER_BIN): $(HEADER_C)
 	@echo "Header contents:"
 	@hexdump -C $(HEADER_BIN)
 
+# Create objdump disassembly
+$(DUMP_FILE): $(PROG_ELF)
+	@echo "Generating objdump..."
+	$(OBJDUMP) -D $(PROG_ELF) > $(DUMP_FILE)
+	@echo "Objdump created: $(DUMP_FILE)"
+
 # Create final binary (header + program)
 $(FINAL_BIN): $(HEADER_BIN) $(PROG_BIN)
 	@echo "Creating final binary..."
@@ -103,6 +112,7 @@ clean:
 	rm -f $(USER_OBJ) $(PROG_ELF) $(PROG_BIN)
 	rm -f $(HEADER_OBJ) $(HEADER_BIN)
 	rm -f $(ELF_INFO) $(FINAL_BIN) $(OUTPUT_BIN)
+	rm -f $(DUMP_FILE)
 	@echo "Clean complete (header.c preserved)"
 
 # Clean everything including header.c
@@ -112,6 +122,7 @@ distclean:
 	rm -f $(USER_OBJ) $(PROG_ELF) $(PROG_BIN)
 	rm -f $(HEADER_C) $(HEADER_OBJ) $(HEADER_BIN)
 	rm -f $(ELF_INFO) $(FINAL_BIN) $(OUTPUT_BIN)
+	rm -f $(DUMP_FILE)
 	@echo "Deep clean complete (including header.c)"
 
 # Help target
@@ -120,7 +131,7 @@ help:
 	@echo "RISC-V User Program Build System"
 	@echo "================================"
 	@echo "Targets:"
-	@echo "  all       - Build final binary (default)"
+	@echo "  all       - Build final binary + objdump (default)"
 	@echo "  info      - Show ELF analysis information"
 	@echo "  hexdump   - Display hex dump of final binary"
 	@echo "  clean     - Remove generated files (keep header.c)"
@@ -133,6 +144,7 @@ help:
 	@echo "  $(HEADER_C)   - Generated header C file (PRESERVED)"
 	@echo "  $(HEADER_BIN) - Header binary"
 	@echo "  $(OUTPUT_BIN) - Final output binary (named after source)"
+	@echo "  $(DUMP_FILE)  - Full disassembly dump file"
 
 # Phony targets
 .PHONY: all clean distclean info hexdump help

@@ -5,7 +5,7 @@
 // Needs to set these addresses 
 char* trampoline = 0x00000000;
 char* userret = 0x000000ac;
-char* uservec = 0x00000000;
+char* uservec = 0x0000000;
 
 void prepare_return(void)
 {

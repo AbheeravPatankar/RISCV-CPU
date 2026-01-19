@@ -202,6 +202,7 @@ void userinit()
     return ;
 }
 
+
 void fork_ret()
 {
     prepare_return();
@@ -210,12 +211,11 @@ void fork_ret()
     {
         p->parent = NULL;
     }
+
     uint32 root_pa  = (uint32)(p->pagetable);  // ROOT page table
     uint32 root_ppn = root_pa >> 12;
     uint32 satp = (1U << 31) | root_ppn;
 
-    uint32 test = sv32_va_to_pa(satp, 0x801fbfe0);
-    
     ((void (*)(uint32))userret)(satp);
 }
 

@@ -10,7 +10,6 @@ trampoline:
 uservec:
     csrw sscratch, a0
     li a0, TRAPFRAME
-
     sw ra, 40(a0)
     sw sp, 48(a0)
     sw gp, 56(a0)
