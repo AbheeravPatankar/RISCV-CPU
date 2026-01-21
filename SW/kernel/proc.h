@@ -8,61 +8,61 @@
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 struct trapframe {
-  unsigned int kernel_sp;     // top of process's kernel stack
-  unsigned int kernel_trap;   // usertrap()
-  unsigned int kernel_satp;
-  unsigned int epc;           // saved user program counter
-  unsigned int kernel_hartid; // saved kernel tp
-  unsigned int ra;
-  unsigned int sp;
-  unsigned int gp;
-  unsigned int tp;
-  unsigned int t0;
-  unsigned int t1;
-  unsigned int t2;
-  unsigned int s0;
-  unsigned int s1;
-  unsigned int a0;
-  unsigned int a1;
-  unsigned int a2;
-  unsigned int a3;
-  unsigned int a4;
-  unsigned int a5;
-  unsigned int a6;
-  unsigned int a7;
-  unsigned int s2;
-  unsigned int s3;
-  unsigned int s4;
-  unsigned int s5;
-  unsigned int s6;
-  unsigned int s7;
-  unsigned int s8;
-  unsigned int s9;
-  unsigned int s10;
-  unsigned int s11;
-  unsigned int t3;
-  unsigned int t4;
-  unsigned int t5;
-  unsigned int t6;
+  uint32 kernel_sp;     // top of process's kernel stack
+  uint32 kernel_trap;   // usertrap()
+  uint32 kernel_satp;
+  uint32 epc;           // saved user program counter
+  uint32 kernel_hartid; // saved kernel tp
+  uint32 ra;
+  uint32 sp;
+  uint32 gp;
+  uint32 tp;
+  uint32 t0;
+  uint32 t1;
+  uint32 t2;
+  uint32 s0;
+  uint32 s1;
+  uint32 a0;
+  uint32 a1;
+  uint32 a2;
+  uint32 a3;
+  uint32 a4;
+  uint32 a5;
+  uint32 a6;
+  uint32 a7;
+  uint32 s2;
+  uint32 s3;
+  uint32 s4;
+  uint32 s5;
+  uint32 s6;
+  uint32 s7;
+  uint32 s8;
+  uint32 s9;
+  uint32 s10;
+  uint32 s11;
+  uint32 t3;
+  uint32 t4;
+  uint32 t5;
+  uint32 t6;
 };
 
 struct context {
-  unsigned int ra;
-  unsigned int sp;
+  uint32 ra;
+  uint32 sp;
 
   // callee-saved
-  unsigned int  s0;
-  unsigned int  s1;
-  unsigned int  s2;
-  unsigned int  s3;
-  unsigned int  s4;
-  unsigned int  s5;
-  unsigned int  s6;
-  unsigned int  s7;
-  unsigned int  s8;
-  unsigned int  s9;
-  unsigned int  s10;
-  unsigned int  s11;
+  uint32  s0;
+  uint32  s1;
+  uint32  s2;
+  uint32  s3;
+  uint32  s4;
+  uint32  s5;
+  uint32  s6;
+  uint32  s7;
+  uint32  s8;
+  uint32  s9;
+  uint32  s10;
+  uint32  s11;
 };
 
 typedef struct proc

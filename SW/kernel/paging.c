@@ -129,7 +129,7 @@ uint32 va_to_pte(uint32* pagetable, uint32 va)
     {
         uint32* pa = alloc_page();
         memstr((char*)pa, 0, PAGE_SIZE);
-        pagetable[internal_page_no] = (((uint32)pa >> 12) << 10) | (set_perms("UV"));
+        pagetable[internal_page_no] = (((uint32)pa >> 12) << 10) | (set_perms("V"));
         leaf_pagetable = pa;
 
     }
@@ -273,10 +273,10 @@ void map_trampoline_and_trapframe(uint32* pagetable, uint32* trapframe)
 {
     // map the trampoline page at va = 0x0000
     map_vm(pagetable,0x000, PAGE_SIZE, set_perms("UXV"));
-    map_va_to_pa(pagetable, 0x000, 0x80003000, set_perms("RWXUV"));
+    map_va_to_pa(pagetable, 0x000, 0x80003000, set_perms("RWXV"));
 
     // map the trapframe page
     map_vm(pagetable,PAGE_SIZE, PAGE_SIZE, set_perms("RWUV"));
-    map_va_to_pa(pagetable, PAGE_SIZE, trapframe , set_perms("RWUV")); 
+    map_va_to_pa(pagetable, PAGE_SIZE, trapframe , set_perms("RWV")); 
     return ;
 }

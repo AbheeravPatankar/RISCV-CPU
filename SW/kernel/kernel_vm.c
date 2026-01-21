@@ -3,7 +3,7 @@
 #include "paging.h"
 #include "utils.h"
 uint32* kernel_pagetable;
-
+uint32 kernel_satp;
 extern char* trampoline;
 
 
@@ -38,7 +38,6 @@ void map_kva_to_kpa(uint32 va, uint32 pa)
 }
 
 
-//********** Needs to change this function as the paging scheme is sv32 
 void init_kernel_paging()
 { 
     // allocate 2 pages for external kernel pagetable
@@ -63,17 +62,9 @@ void init_kernel_paging()
     uint32 root_pa  = (uint32)kernel_pagetable;  // ROOT page table
     uint32 root_ppn = root_pa >> 12;
 
-    uint32 satp = (1U << 31) | root_ppn;   // MODE = Sv32
+    kernel_satp = (1U << 31) | root_ppn;   // MODE = Sv32
 
-    uint32 test = sv32_va_to_pa(satp, 0x000000ac);
-
-    asm volatile ("csrw satp, %0" :: "r"(satp));
+    asm volatile ("csrw satp, %0" :: "r"(kernel_satp));
     asm volatile ("sfence.vma zero, zero");
-    
-    // Set SUM bit to allow S-mode to access user memory
-    uint32 sstatus;
-    asm volatile ("csrr %0, sstatus" : "=r"(sstatus));
-    sstatus |= (1 << 18);  // Set SUM bit (bit 18)
-    asm volatile ("csrw sstatus, %0" :: "r"(sstatus));
 
 }

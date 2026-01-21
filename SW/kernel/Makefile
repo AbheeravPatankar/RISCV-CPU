@@ -51,7 +51,7 @@ QEMU_FLAGS = \
 	-kernel $(PROG) \
 	-device loader,file=$(TRAMPOLINE_BIN),addr=0x80003000 \
 	-device loader,file=$(USER_BIN),addr=$(USER_ADDR) \
-	-d int -D qemu.log
+	-d int,mmu,guest_errors -D qemu.log
 
 # ==============================
 # Rules

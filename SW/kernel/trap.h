@@ -6,3 +6,4 @@
 
 void prepare_return();
 
+void usertrap();

@@ -4,6 +4,9 @@
 #include "kernel_vm.h"
 
 extern char* userret;
+extern char* uservec;
+
+extern uint32 kernel_satp;
 
 PROC processes[MAX_PROC];
 
@@ -181,7 +184,12 @@ int exec(char* name)
     map_trampoline_and_trapframe((uint32*) p->pagetable, (uint32*)p->ptr_to_trapframe);
     p->killed = 0;
     
-    
+    // map the address of usertrap in trapframe->kernel trap 
+    p->ptr_to_trapframe->kernel_trap = (uint32)usertrap;
+
+    // map the kernel pagetable in trapframe
+    p->ptr_to_trapframe->kernel_satp = kernel_satp;
+
     // free all pages in the old pagetable
     if(old_pagetable != NULL)
         unmap_vm(old_pagetable);
@@ -215,7 +223,7 @@ void fork_ret()
     uint32 root_pa  = (uint32)(p->pagetable);  // ROOT page table
     uint32 root_ppn = root_pa >> 12;
     uint32 satp = (1U << 31) | root_ppn;
-
+    uint32 test = sv32_va_to_pa(satp, 0xbc);
     ((void (*)(uint32))userret)(satp);
 }
 

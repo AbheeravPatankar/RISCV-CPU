@@ -4,7 +4,7 @@
 
 // Needs to set these addresses 
 char* trampoline = 0x00000000;
-char* userret = 0x000000ac;
+char* userret = 0x000000b0;
 char* uservec = 0x0000000;
 
 void prepare_return(void)
@@ -36,5 +36,12 @@ void prepare_return(void)
     /* Set sepc to user instruction pointer */
     asm volatile ("csrw sepc, %0" :: "r"(p->ptr_to_trapframe->epc));
 
+}
+
+// function to process supervisor interrupts 
+// we jump here from trampoline 
+void usertrap()
+{
+   while(1);
 }
 
