@@ -44,7 +44,7 @@ void init_kernel_paging()
     kernel_pagetable = alloc_page();
 
     // map the trampoline page
-    map_kva_to_kpa(0x00000000, 0x80003000);
+    map_kva_to_kpa(0x00000000, 0x80004000);
     
     // map the kernel .text and .data sections ... 1 - 1 mapping
     uint32 va = 0x80000000;

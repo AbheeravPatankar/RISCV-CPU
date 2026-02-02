@@ -117,6 +117,7 @@ void parse_segment_header(SEGMENT_HEADER* seg_header, uint32* base_addr, PROC* p
     uint32 start_vaddr = size_rounddown(seg_header->vaddr);
     uint32 read_size = seg_header->filesz + seg_header->vaddr - start_vaddr;
     map_vm(p->pagetable,start_vaddr , read_size , set_perms("RWXUV"));
+    
     // copy memory from the buffer to allocated pages
     // !NOTE copyout is not going to work for processes having segments larger that BUFFER_SIZE -- replace this with some uart read function  
     copyout(p->pagetable, (char*)base_addr + seg_header->offset, seg_header->vaddr, seg_header->filesz);
@@ -232,5 +233,19 @@ void fork_ret()
 // sleep()
 // wait()
 // exit()
-// yeild()
+
+// function through the process will give away its timeshare
+// called after a timer interrupt 
+void  yeild()
+{
+    PROC* p = myproc();
+    p->state = RUNNABLE;
+    
+    // call switch to switch context from this thread to the scheduler thread
+
+    if(p->state == RUNNING)
+        return ;
+
+    swtch(&(p->context), &(cpu.context));
+}
 

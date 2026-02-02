@@ -118,3 +118,7 @@ void swtch(struct context* old, struct context* new);
 int exec(char* name);
 
 void fork_ret();
+
+void yeild();
+
+void sched();

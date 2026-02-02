@@ -1,6 +1,7 @@
 #include "trap.h"
 #include "proc.h"
 #include "paging.h"
+#include "timer.h"
 
 // Needs to set these addresses 
 char* trampoline = 0x00000000;
@@ -42,6 +43,30 @@ void prepare_return(void)
 // we jump here from trampoline 
 void usertrap()
 {
-   while(1);
+
+    // set stvec to kernelvec for kernel traps 
+
+    // kernel traps not implemented by now 
+
+    // save the sepc 
+    PROC* p = myproc();
+    uint32 sepc;
+    asm volatile("csrr %0, sepc" : "=r" (sepc));
+    p->ptr_to_trapframe->epc = sepc;
+
+    // // read scause 
+
+    uint32 scause;
+    asm volatile("csrr %0, scause" : "=r" (scause));
+
+    if(scause == 0x80000001)
+    {
+        // timer interrupt
+        timer_interrupt();
+        yeild();
+        
+    }
+
+   fork_ret();  
 }
 

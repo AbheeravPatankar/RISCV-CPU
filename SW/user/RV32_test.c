@@ -1,3 +1,5 @@
+#include "syscall.h"
+
 
 int arr[16] = {5,3,5,6,8,5,3,2,5,7,8};
 char c_arr[15] = {'a'};
@@ -43,5 +45,6 @@ int main()
     populate(25);
     calc_sum(&sum);   
 
-    return sum;
+    sys_exit(0);
+    // __no reutrn __ as calling exit in main 
 }

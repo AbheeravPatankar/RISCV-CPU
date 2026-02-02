@@ -49,7 +49,7 @@ QEMU_FLAGS = \
 	-nographic \
 	-bios none \
 	-kernel $(PROG) \
-	-device loader,file=$(TRAMPOLINE_BIN),addr=0x80003000 \
+	-device loader,file=$(TRAMPOLINE_BIN),addr=0x80004000 \
 	-device loader,file=$(USER_BIN),addr=$(USER_ADDR) \
 	-d int,mmu,guest_errors -D qemu.log
 

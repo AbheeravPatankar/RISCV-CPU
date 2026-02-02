@@ -6,6 +6,13 @@
 
 uint32 timer_scratch[5];
 
+uint32 ticks = 0 ;
+
+void timer_interrupt()
+{
+    // increment the ticks count 
+    ticks++;
+}
 
 void timerinit(void)
 {

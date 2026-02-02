@@ -10,3 +10,5 @@ void handle_mtimer();
 void timerinit();
 
 void timervec();
+
+void timer_interrupt();

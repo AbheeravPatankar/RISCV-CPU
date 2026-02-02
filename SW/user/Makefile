@@ -1,6 +1,3 @@
-# Makefile for RISC-V User Program Build
-# Compiles user program, generates header, and creates final binary
-
 # Tools
 CC = riscv64-unknown-elf-gcc
 OBJCOPY = riscv64-unknown-elf-objcopy
@@ -13,11 +10,16 @@ LDFLAGS = -march=rv32i -mabi=ilp32 -nostartfiles -nostdlib -lgcc
 
 # Source files
 USER_SRC = RV32_test.c
+ASM_SRC  = syscall.S
 LINKER_SCRIPT = user.ld
 ELF_GENERATOR = elf_generator.py
 
-# Intermediate files
+# Object files
 USER_OBJ = RV32_test.o
+ASM_OBJ  = syscall.o
+OBJS = $(USER_OBJ) $(ASM_OBJ)
+
+# Intermediate files
 PROG_ELF = prog.elf
 PROG_BIN = prog.bin
 HEADER_C = header.c
@@ -45,7 +47,7 @@ all: $(FINAL_BIN) $(DUMP_FILE)
 	@hexdump -C $(FINAL_BIN) | head -30
 	@echo ""
 	@echo "Cleaning intermediate files..."
-	@rm -f $(USER_OBJ) $(PROG_ELF) $(PROG_BIN)
+	@rm -f $(OBJS) $(PROG_ELF) $(PROG_BIN)
 	@rm -f $(HEADER_OBJ) $(HEADER_BIN)
 	@rm -f $(ELF_INFO)
 	@mv $(FINAL_BIN) $(OUTPUT_BIN)
@@ -54,10 +56,16 @@ all: $(FINAL_BIN) $(DUMP_FILE)
 	@echo "================================"
 
 # Build user program ELF
-$(PROG_ELF): $(USER_SRC) $(LINKER_SCRIPT)
+$(PROG_ELF): $(USER_SRC) $(ASM_SRC) $(LINKER_SCRIPT)
 	@echo "Compiling user program..."
 	$(CC) $(CFLAGS) -c $(USER_SRC) -o $(USER_OBJ)
-	$(CC) $(LDFLAGS) $(USER_OBJ) -T $(LINKER_SCRIPT) -o $(PROG_ELF)
+
+	@echo "Compiling syscall assembly..."
+	$(CC) $(CFLAGS) -c $(ASM_SRC) -o $(ASM_OBJ)
+
+	@echo "Linking ELF..."
+	$(CC) $(LDFLAGS) $(OBJS) -T $(LINKER_SCRIPT) -o $(PROG_ELF)
+
 	@echo "User program ELF created: $(PROG_ELF)"
 
 # Generate header.c from ELF
@@ -95,56 +103,13 @@ $(FINAL_BIN): $(HEADER_BIN) $(PROG_BIN)
 	cat $(HEADER_BIN) $(PROG_BIN) > $(FINAL_BIN)
 	@echo "Final binary created: $(FINAL_BIN)"
 
-# Show ELF information
-.PHONY: info
-info: $(ELF_INFO)
-	@cat $(ELF_INFO)
-
-# Show final binary hex dump
-.PHONY: hexdump
-hexdump: $(OUTPUT_BIN)
-	hexdump -C $(OUTPUT_BIN)
-
-# Clean all generated files (but keep header.c)
+# Clean target
 .PHONY: clean
 clean:
-	@echo "Cleaning generated files (keeping header.c)..."
-	rm -f $(USER_OBJ) $(PROG_ELF) $(PROG_BIN)
-	rm -f $(HEADER_OBJ) $(HEADER_BIN)
-	rm -f $(ELF_INFO) $(FINAL_BIN) $(OUTPUT_BIN)
-	rm -f $(DUMP_FILE)
-	@echo "Clean complete (header.c preserved)"
-
-# Clean everything including header.c
-.PHONY: distclean
-distclean:
-	@echo "Deep cleaning all generated files..."
-	rm -f $(USER_OBJ) $(PROG_ELF) $(PROG_BIN)
-	rm -f $(HEADER_C) $(HEADER_OBJ) $(HEADER_BIN)
-	rm -f $(ELF_INFO) $(FINAL_BIN) $(OUTPUT_BIN)
-	rm -f $(DUMP_FILE)
-	@echo "Deep clean complete (including header.c)"
-
-# Help target
-.PHONY: help
-help:
-	@echo "RISC-V User Program Build System"
-	@echo "================================"
-	@echo "Targets:"
-	@echo "  all       - Build final binary + objdump (default)"
-	@echo "  info      - Show ELF analysis information"
-	@echo "  hexdump   - Display hex dump of final binary"
-	@echo "  clean     - Remove generated files (keep header.c)"
-	@echo "  distclean - Remove all generated files (including header.c)"
-	@echo "  help      - Show this help message"
-	@echo ""
-	@echo "Generated files:"
-	@echo "  $(PROG_ELF)   - User program ELF"
-	@echo "  $(PROG_BIN)   - Stripped program binary"
-	@echo "  $(HEADER_C)   - Generated header C file (PRESERVED)"
-	@echo "  $(HEADER_BIN) - Header binary"
-	@echo "  $(OUTPUT_BIN) - Final output binary (named after source)"
-	@echo "  $(DUMP_FILE)  - Full disassembly dump file"
-
-# Phony targets
-.PHONY: all clean distclean info hexdump help
+	@echo "Cleaning build artifacts..."
+	@rm -f $(USER_OBJ) $(ASM_OBJ) $(HEADER_OBJ)
+	@rm -f $(PROG_ELF) $(PROG_BIN)
+	@rm -f $(HEADER_BIN) $(FINAL_BIN)
+	@rm -f $(ELF_INFO) $(DUMP_FILE)
+	@rm -f $(OUTPUT_BIN)
+	@echo "Clean complete."

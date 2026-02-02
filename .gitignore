@@ -1,2 +1,5 @@
 
 *.log
+SW/kernel/.gdb_history
+SW/user/prog.dump
+SW/user/prog.dump
