@@ -81,6 +81,8 @@ PAGE* alloc_page()
     PAGE* free_page = umem.free_page;
     PAGE* temp = umem.free_page->ptr_to_page;
     umem.free_page = temp;
+    // scrub the entire page and allocate
+    memstr((uint32*)free_page, 0 , PAGE_SIZE);
     return free_page;
 }
 
@@ -243,15 +245,18 @@ void map_va_to_pa(uint32* pagetable, uint32 va, uint32 pa, int perms)
 void copy_proc_mem(uint32* parent_pagetable, uint32* child_pagetable)
 {
     // iterate over all the entries in the parent pagetable 
-    for(int i = 1; i < MAX_PTE; i++)
+    for(int i = 0; i < MAX_PTE; i++)
     {
         // check if this entry is valid 
         if(is_pte_valid(parent_pagetable[i]))
         {
             // load the lead pagetable
             uint32* leaf_pagetable = extract_pa_from_pte(parent_pagetable[i]);
-            for(int j = 0; j < MAX_PTE; j++)
+            for(int j = 2; j < MAX_PTE; j++)
             {
+                // do not copy the trapframe and trampoline here 
+                // trapframe will be copied later and trampoline needs to be only mapped 
+
                 // check if the lead entry is valid
                 if(is_pte_valid(leaf_pagetable[j]))
                 {
@@ -260,7 +265,7 @@ void copy_proc_mem(uint32* parent_pagetable, uint32* child_pagetable)
                     map_vm(child_pagetable, va,PAGE_SIZE, extract_perms_from_pte(leaf_pagetable[j]));
                     uint32 child_pa = va_to_pte(child_pagetable, va);
                     child_pa = extract_pa_from_pte(child_pa);
-                    k_memcpy(child_pa, extract_pa_from_pte(parent_pagetable[j]), PAGE_SIZE);
+                    k_memcpy(child_pa, extract_pa_from_pte(leaf_pagetable[j]), PAGE_SIZE);
                 }
             }
 

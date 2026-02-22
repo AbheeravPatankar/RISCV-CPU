@@ -2,6 +2,8 @@
 #include "proc.h"
 #include "paging.h"
 #include "timer.h"
+#include "syscall.h"
+
 
 // Needs to set these addresses 
 char* trampoline = 0x00000000;
@@ -25,7 +27,7 @@ void prepare_return(void)
     if (is_first) 
     {
         is_first = 0;
-        exec("init");
+        kexec("init");
     }
 
     uint32 x;
@@ -63,8 +65,46 @@ void usertrap()
     {
         // timer interrupt
         timer_interrupt();
-        yeild();
+        kyeild();
         
+    }
+    else if(scause == 0x8)
+    {
+        // its a syscall......
+        // check if the process is killed ? 
+
+        if(killed(p))
+        {
+            kexit(-1);
+        }
+        // TODO : turn on interrupts .... will enable this in a later phase 
+
+        // read the a7 register to identify which system call is this
+
+        // increment the epc by 4 
+
+
+        int sys_call_id = p->ptr_to_trapframe->a7;
+        // call the appropriate syscall handler
+        p->ptr_to_trapframe->epc += 4;
+
+        switch(sys_call_id)
+        {
+            case SYS_fork:
+                kfork();
+                break;
+
+            case SYS_exit:
+                kexit(p->ptr_to_trapframe->a0);
+                break;
+
+            default:
+                break;           
+
+        }
+
+       
+
     }
 
    fork_ret();  

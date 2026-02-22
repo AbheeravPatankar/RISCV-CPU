@@ -10,6 +10,8 @@ extern uint32 kernel_satp;
 
 PROC processes[MAX_PROC];
 
+PROC* initproc;
+
 CPU cpu = {0};  // only one cpu object as the system is unicore 
 
 PROC* myproc()
@@ -62,6 +64,8 @@ PROC* alloc_proc()
     {
         if(processes[i].state == UNUSED)
         {
+            processes[i].pid = alloc_pid();
+
             // allocate that structure member and return
             PAGE* trapframe = alloc_page();
             processes[i].state = USED;
@@ -76,14 +80,12 @@ PROC* alloc_proc()
 
 // fork the process - make the copy of the process 
 
-int fork()
+int kfork()
 {
     PROC* parent = myproc();
-    int pid = alloc_pid();
     PROC* child = alloc_proc();
     if(child == NULL)
         return ;
-    child->pid = pid;
 
     PAGE* pagetable = create_page_table();
     child->pagetable = (uint32*)(pagetable);
@@ -92,21 +94,24 @@ int fork()
     copy_proc_mem(parent->pagetable, child->pagetable);
     child->size = parent->size;
 
+    map_trampoline_and_trapframe(child->pagetable, child->ptr_to_trapframe);
     //copy the trapframes 
     k_memcpy(child->ptr_to_trapframe, parent->ptr_to_trapframe, sizeof(struct trapframe));
+
+    // return 0 for child process 
     child->ptr_to_trapframe->a0 = 0;
 
     // copy the name of the process
     k_strcpy(child->name, parent->name);
 
-    pid = parent->pid;
-
     child->parent = parent;
 
+    child->context.ra = fork_ret;
+    child->context.sp = child->ptr_to_trapframe->kernel_sp;
     child->state = RUNNABLE;
 
-    // return the child pid for parent process to return 
-    return pid;
+    // return the child pid for parent process
+    return child->pid;
 }
 
 
@@ -125,7 +130,7 @@ void parse_segment_header(SEGMENT_HEADER* seg_header, uint32* base_addr, PROC* p
 
 // initialize the a process 
 // this is actually exec call implementation - ( make the necessary changes )
-int exec(char* name)
+int kexec(char* name)
 {
     PROC* p = myproc();
     PAGE* pagetable = alloc_page();
@@ -203,11 +208,12 @@ void userinit()
 {
     // allocate the proc structure and trapframe to the first process 
     PROC* p = alloc_proc();
+    initproc = p;
     p->state = RUNNABLE;
     p->context.sp = p->kstack + PAGE_SIZE;
     p->context.ra = fork_ret;
 
-    // process is ready to be schedled now 
+    // process is ready to be swtchled now 
     return ;
 }
 
@@ -216,10 +222,6 @@ void fork_ret()
 {
     prepare_return();
     PROC* p = myproc();
-    if(strcmp(p->name,"init"))
-    {
-        p->parent = NULL;
-    }
 
     uint32 root_pa  = (uint32)(p->pagetable);  // ROOT page table
     uint32 root_ppn = root_pa >> 12;
@@ -228,24 +230,153 @@ void fork_ret()
     ((void (*)(uint32))userret)(satp);
 }
 
-// freeproc() - free all pages occupied by the proc , free its trapframe , free the proc structure 
-// proc related syscalls 
-// sleep()
-// wait()
-// exit()
 
 // function through the process will give away its timeshare
 // called after a timer interrupt 
-void  yeild()
+void  kyeild()
 {
     PROC* p = myproc();
     p->state = RUNNABLE;
     
-    // call switch to switch context from this thread to the scheduler thread
+    // call switch to switch context from this thread to the swtchuler thread
 
     if(p->state == RUNNING)
         return ;
 
     swtch(&(p->context), &(cpu.context));
 }
+
+int killed(PROC* p)
+{
+    return p->killed;
+}
+
+
+void reparent(PROC* p)
+{
+    int ppid = p->pid;
+
+    for(uint32 i = 0 ; i < MAX_PROC ; i++)
+    {
+        if(processes[i].parent == p)
+        {
+            // reparent to init
+            processes[i].parent = initproc;
+
+            // TODO wakeup init proc - to remove all the zomblie children
+            kwakeup(initproc);
+        }
+    }
+}
+
+void kexit(int status)
+{
+    // loop unitl we define the function correctly 
+    PROC* p = myproc();
+
+    if(p == initproc)
+        return ;
+
+    // reparent all the child processes 
+    reparent(p);
+
+    p->state = ZOMBIE;
+    p->xstatus = status ;
+
+    kwakeup(p->parent);
+}
+
+
+void kwakeup(void* chan)
+{
+    for(int i = 0 ; i < MAX_PROC; i++)
+    {
+        if((processes + i) != myproc())
+        {
+            if(processes[i].chan == chan)
+            {
+                processes[i].state = RUNNABLE;
+            }
+        }
+    }
+}
+
+void ksleep(void* chan)
+{
+    PROC* p = myproc();
+
+    p->chan = chan;
+    p->state = SLEEPING;
+
+    swtch(&(p->context), &(cpu.context));
+
+    p->chan = NULL;
+
+}
+
+// need to return 
+int kwait(int* addr)
+{
+    PROC* parent = myproc();
+    PROC* child;
+
+    int havekids,pid;
+
+    while(1)
+    {
+        havekids = 0;
+        for(int i = 0 ; i < MAX_PROC; i++)
+        {
+            // check if there is a child to the current process
+            if(processes[i].parent == parent)
+            {
+                havekids = 1;
+
+                // check if the child has exited
+                if(processes[i].state == ZOMBIE)
+                {
+                    // copy the exit state 
+                    if(addr != NULL)
+                    {
+                        copyout((uint32*)parent->pagetable,&(child->xstatus), (uint32)addr, sizeof(child->xstatus));
+                    }
+                    else
+                        return -1;
+
+                    // copy the pid 
+                    pid = child->pid;
+
+                    // free the child process memory 
+                    freeproc(child);
+
+                    return pid;
+                    
+                }
+            }     
+        }
+
+        // return if there were no children     
+        if(havekids == 0)
+        {
+            return -1;
+        }
+
+        // sleep until child calls exit 
+        ksleep(parent);
+        
+    }
+}
+
+
+
+// void kkill()
+
+// void freeproc() free all pages occupied by the proc , free its trapframe , free the proc structure 
+
+
+void freeproc()
+{
+    while(1);
+}
+
 

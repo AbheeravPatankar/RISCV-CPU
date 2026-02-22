@@ -36,7 +36,7 @@ TRAMPOLINE_BIN = trampoline.bin
 # ------------------------------
 # User program
 # ------------------------------
-USER_BIN  = /home/abheerav/RISCV-CPU/SW/user/RV32_test.bin
+USER_BIN  = /home/abheerav/RISCV-CPU/SW/user/parent.bin
 USER_ADDR = 0x80005000
 
 QEMU = qemu-system-riscv32

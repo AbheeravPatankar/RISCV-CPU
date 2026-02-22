@@ -15,6 +15,9 @@ def run_command(command):
         )
         return result.stdout
     except subprocess.CalledProcessError as e:
+        # grep returns 1 when no match — not fatal
+        if e.returncode == 1:
+            return None
         print(f"Error running command: {command}")
         print(e.stderr)
         return None
@@ -25,21 +28,20 @@ def align_up(value, alignment):
 
 
 def get_section_info(elf_path, section_name):
-    """
-    Extract section size and VMA.
-    ELF file offsets are NOT used because we emit a flat binary.
-    """
     cmd = f"riscv64-unknown-elf-objdump -h {elf_path} | grep ' {section_name} '"
     out = run_command(cmd)
 
-    if out:
-        parts = out.split()
-        if len(parts) >= 4:
-            return {
-                "name": section_name,
-                "size": int(parts[2], 16),
-                "address": int(parts[3], 16),  # VMA
-            }
+    if not out:
+        return None
+
+    parts = out.split()
+    if len(parts) >= 4:
+        return {
+            "name": section_name,
+            "size": int(parts[2], 16),
+            "address": int(parts[3], 16),
+        }
+
     return None
 
 
@@ -47,10 +49,13 @@ def get_main_address(elf_path):
     cmd = f"riscv64-unknown-elf-nm {elf_path} | grep ' main$'"
     out = run_command(cmd)
 
-    if out:
-        m = re.search(r'^([0-9a-fA-F]+)', out.strip())
-        if m:
-            return int(m.group(1), 16)
+    if not out:
+        return None
+
+    m = re.search(r'^([0-9a-fA-F]+)', out.strip())
+    if m:
+        return int(m.group(1), 16)
+
     return None
 
 
@@ -60,7 +65,7 @@ def analyze_data_sections(elf_path):
 
     for name in names:
         info = get_section_info(elf_path, name)
-        if info:
+        if info and info["size"] > 0:
             sections.append(info)
 
     if not sections:
@@ -72,22 +77,19 @@ def analyze_data_sections(elf_path):
     last = sections[-1]
 
     first_addr = first['address']
-    last_end = last['address'] + last['size']
-    last_end = align_up(last_end, 4)
+    last_end = align_up(last['address'] + last['size'], 4)
 
     total_size = last_end - first_addr
     return first_addr, total_size, sections
 
 
-def compute_header_size():
-    """
-    ELF_HEADER        = 16 bytes
-    2 SEGMENT_HEADERs = 2 * 20 = 40 bytes
-    padding           = 8 bytes
-    -------------------------------
-    total             = 64 bytes (0x40)
-    """
-    return align_up(16 + (2 * 20) + 8, 16)
+def compute_header_size(segment_count):
+    ELF_HEADER_SIZE = 16
+    SEGMENT_HEADER_SIZE = 20
+
+    actual_size = ELF_HEADER_SIZE + (segment_count * SEGMENT_HEADER_SIZE)
+
+    return align_up(actual_size, 16)
 
 
 def print_header_structure(elf_path, output_file="header.c"):
@@ -95,39 +97,40 @@ def print_header_structure(elf_path, output_file="header.c"):
     entry = get_main_address(elf_path)
     data_addr, data_size, data_sections = analyze_data_sections(elf_path)
 
-    if not text:
-        print("ERROR: .text not found")
-        return False
-
     if entry is None:
         print("ERROR: main not found")
         return False
 
-    HEADER_SIZE = compute_header_size()
+    segments = []
 
-    if text['address'] != PROGRAM_BASE_VA:
-        print(
-            f"WARNING: .text VMA is 0x{text['address']:x}, "
-            f"expected 0x{PROGRAM_BASE_VA:x}"
-        )
+    # TEXT segment
+    if text and text["size"] > 0:
+        segments.append({
+            "flags": 4,
+            "vaddr": text['address'],
+            "filesz": text['size'],
+            "memsz": align_up(text['size'], 4096)
+        })
 
-    # ---- TEXT SEGMENT ----
-    text_vaddr = text['address']
-    text_size = text['size']
-    text_memsz = align_up(text_size, 4096)
-    text_offset = HEADER_SIZE + (text_vaddr - PROGRAM_BASE_VA)
+    # DATA segment
+    if data_sections and data_size > 0:
+        segments.append({
+            "flags": 4,
+            "vaddr": data_addr,
+            "filesz": data_size,
+            "memsz": align_up(data_size, 4096)
+        })
 
-    # ---- DATA SEGMENT ----
-    if data_sections:
-        data_vaddr = data_addr
-        data_filesz = data_size
-        data_memsz = align_up(data_filesz, 4096)
-        data_offset = HEADER_SIZE + (data_vaddr - PROGRAM_BASE_VA)
-    else:
-        data_vaddr = 0
-        data_filesz = 0
-        data_memsz = 0
-        data_offset = 0
+    segment_count = len(segments)
+
+    HEADER_SIZE = compute_header_size(segment_count)
+
+    # compute file offsets
+    for seg in segments:
+        seg["offset"] = HEADER_SIZE + (seg["vaddr"] - PROGRAM_BASE_VA)
+
+    actual_struct_size = 16 + (segment_count * 20)
+    pad_size = HEADER_SIZE - actual_struct_size
 
     content = []
 
@@ -156,40 +159,50 @@ def print_header_structure(elf_path, output_file="header.c"):
     content.append("__asm__(\".align 16\");")
     content.append("")
 
+    # ELF header
     content.append(
         f"ELF_HEADER elf_header "
         f"__attribute__((section(\".header\"), aligned(16))) = "
-        f"{{1234, 0x{entry:08x}, 2, 16}};"
+        f"{{1234, 0x{entry:08x}, {segment_count}, 16}};"
     )
     content.append("")
 
-    content.append(
-        "SEGMENT_HEADER segment_header[2] "
-        "__attribute__((section(\".header\"), aligned(16))) = {"
-    )
-    content.append("    {")
-    content.append(
-        f"        4, 0x{text_offset:08x}, 0x{text_vaddr:08x}, "
-        f"{text_size}, {text_memsz}"
-    )
-    content.append("    },")
-    content.append("    {")
-    content.append(
-        f"        4, 0x{data_offset:08x}, 0x{data_vaddr:08x}, "
-        f"{data_filesz}, {data_memsz}"
-    )
-    content.append("    }")
-    content.append("};")
-    content.append("")
-    content.append("char padding[8] __attribute__((section(\".header\"))) = {0};")
+    # Segment headers
+    if segment_count > 0:
+        content.append(
+            f"SEGMENT_HEADER segment_header[{segment_count}] "
+            "__attribute__((section(\".header\"), aligned(16))) = {"
+        )
+
+        for i, seg in enumerate(segments):
+            content.append("    {")
+            content.append(
+                f"        {seg['flags']}, "
+                f"0x{seg['offset']:08x}, "
+                f"0x{seg['vaddr']:08x}, "
+                f"{seg['filesz']}, "
+                f"{seg['memsz']}"
+            )
+            content.append("    }" + ("," if i != segment_count - 1 else ""))
+
+        content.append("};")
+        content.append("")
+
+    # Dynamic padding to 16-byte alignment
+    if pad_size > 0:
+        content.append(
+            f"char padding[{pad_size}] "
+            "__attribute__((section(\".header\"))) = {{0}};"
+        )
 
     with open(output_file, "w") as f:
         f.write("\n".join(content) + "\n")
 
-    for line in content:
-        print(line)
+    print(f"\nActual header struct size : {actual_struct_size} bytes")
+    print(f"Aligned header size       : {HEADER_SIZE} bytes")
+    print(f"Padding emitted           : {pad_size} bytes")
+    print(f"Header written to         : {output_file}")
 
-    print(f"\nHeader written to: {output_file}")
     return True
 
 
@@ -246,8 +259,6 @@ def main():
 
     header_c = "header_generated.c"
     header_bin = "header.bin"
-
-    print_header_structure(elf)
 
     if not generate_header_c_file(elf, header_c):
         sys.exit(1)

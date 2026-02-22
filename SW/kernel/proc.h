@@ -115,10 +115,16 @@ void scheduler();
 
 void swtch(struct context* old, struct context* new);
 
-int exec(char* name);
+int kexec(char* name);
 
 void fork_ret();
 
-void yeild();
+void kyeild();
 
 void sched();
+
+int kfork();
+
+void kexit(int status);
+
+void kwakeup(void* chan);
