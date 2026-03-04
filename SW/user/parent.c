@@ -3,65 +3,13 @@
 */
 #include "syscall.h"
 
-
-int jump_even()
-{
-    return 0;
-}
-
-
-int jump_odd()
-{
-    return 1;
-}
-
-
-int print_odd()
-{
-    while(1)
-    {
-        for(int i = 0 ; i < 100; i++)
-        {
-            if(i % 2 == 0)
-            {
-                print_even();
-            }
-        }
-    }
-}
-
-
-int print_even()
-{
-    while(1)
-    {
-        for(int i = 0 ; i < 100; i++)
-        {
-            if(i % 2 == 0)
-            {
-                print_even();
-            }
-        }
-    }
-}
-
+char some_data[10] = {1,2,3,4,5,6,7,8,9};
 
 int main()
 {
-    // call fork and exit 
 
-    int pid = sys_fork();
-
-    if(pid == 0)
-    {
-        print_even();
-    }
-    else
-    {
-        print_odd();
-    }
-
-
+    // loop infinitely 
+    while(1);
 }
 
 

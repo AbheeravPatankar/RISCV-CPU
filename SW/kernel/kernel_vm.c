@@ -1,7 +1,9 @@
 #include "kernel_vm.h"
 #include "utils.h"
 #include "paging.h"
-#include "utils.h"
+#include "plic.h"
+#include "uart.h"
+
 uint32* kernel_pagetable;
 uint32 kernel_satp;
 extern char* trampoline;
@@ -34,6 +36,8 @@ void map_kva_to_kpa(uint32 va, uint32 pa)
         leaf_pagetable[vpn0] = ((pa >> 12) << 10 )| (PTE_R | PTE_W | PTE_X | PTE_V );
     }
 
+    
+
     return ;
 }
 
@@ -55,8 +59,18 @@ void init_kernel_paging()
     }
 
     // also map the timer register M_TIME and M_CMP 
-    map_kva_to_kpa(0x02004000, 0x02004000);
-    map_kva_to_kpa(0x0200BFF8, 0x02004000);
+    map_kva_to_kpa(0x02004000, 0x02004000);     // M_TIMECMP
+    map_kva_to_kpa(0x0200BFF8, 0x0200BFF8);     // M_TIME
+
+    // map the uart registers 
+    map_kva_to_kpa(UART0 , UART0);
+
+    // map the plic registers 
+    map_kva_to_kpa(0x0c000000, 0x0c000000);
+    map_kva_to_kpa(PLIC_SENABLE(0), PLIC_SENABLE(0));
+    map_kva_to_kpa(PLIC_SPRIORITY(0), PLIC_SPRIORITY(0));
+    map_kva_to_kpa(PLIC_SCLAIM(0), PLIC_SCLAIM(0));
+
 
     // write the satp register to enable paging in kernel 
     uint32 root_pa  = (uint32)kernel_pagetable;  // ROOT page table
@@ -64,6 +78,9 @@ void init_kernel_paging()
 
     kernel_satp = (1U << 31) | root_ppn;   // MODE = Sv32
 
+    uint32 addr = sv32_va_to_pa(kernel_satp, 0x10000005);
+    addr = sv32_va_to_pa(kernel_satp, 0x10000000);
+    addr = sv32_va_to_pa(kernel_satp, 0x0c000000);
     asm volatile ("csrw satp, %0" :: "r"(kernel_satp));
     asm volatile ("sfence.vma zero, zero");
 

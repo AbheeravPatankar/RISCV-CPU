@@ -46,10 +46,7 @@ void prepare_return(void)
 void usertrap()
 {
 
-    // set stvec to kernelvec for kernel traps 
-
-    // kernel traps not implemented by now 
-
+    // set stvec to kernelvec for kernel traps (kernel traps not implemented now)
     // save the sepc 
     PROC* p = myproc();
     uint32 sepc;
@@ -72,7 +69,8 @@ void usertrap()
     {
         // its a syscall......
         // check if the process is killed ? 
-
+        char buff[MAX_PROC_NAME];
+        uint32 sys_arg;
         if(killed(p))
         {
             kexit(-1);
@@ -80,31 +78,46 @@ void usertrap()
         // TODO : turn on interrupts .... will enable this in a later phase 
 
         // read the a7 register to identify which system call is this
-
-        // increment the epc by 4 
-
-
         int sys_call_id = p->ptr_to_trapframe->a7;
-        // call the appropriate syscall handler
+        // increment the epc by 4 
         p->ptr_to_trapframe->epc += 4;
+
+        // call the appropriate syscall handler
+
 
         switch(sys_call_id)
         {
             case SYS_fork:
-                kfork();
+                p->ptr_to_trapframe->a0 = kfork();
                 break;
 
             case SYS_exit:
-                kexit(p->ptr_to_trapframe->a0);
+                sys_arg = p->ptr_to_trapframe->a0;
+                kexit(sys_arg);
+                break;
+
+            case SYS_exec:
+                sys_arg = p->ptr_to_trapframe->a0;
+                copyin(p->pagetable , (uint32*)buff, sys_arg, MAX_PROC_NAME);
+                kexec(buff);
+                break;
+
+            case SYS_wait:
+            // only the parent invokes wait so it will sleep on its own address 
+                kwait(p);  
                 break;
 
             default:
                 break;           
 
         }
+    }
+    else if(scause == 0x80000009)
+    {
+        // device interrupt (for now there are no external devices other than uart device )
 
-       
-
+        // handle the uart interrupt
+        uartintr();
     }
 
    fork_ret();  

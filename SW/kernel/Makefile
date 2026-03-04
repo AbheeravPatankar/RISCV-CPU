@@ -17,7 +17,7 @@ LDSCRIPT = kernel.ld
 # ------------------------------
 # Kernel source files
 # ------------------------------
-SRCS_C   = main.c paging.c utils.c proc.c timer.c scheduler.c trap.c start.c kernel_vm.c
+SRCS_C   = main.c paging.c utils.c proc.c timer.c scheduler.c trap.c start.c kernel_vm.c uart.c plic.c
 SRCS_ASM = entry.S swtch.S  timervec.S        # trampoline removed from kernel
 
 OBJS_C   = $(SRCS_C:.c=.o)

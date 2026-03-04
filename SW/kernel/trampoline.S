@@ -44,7 +44,7 @@ uservec:
 
     # save user a0 in trapframe (it was loaded into sscratch before )
     csrr t0, sscratch
-    sw t0, 112(a0)
+    sw t0, 56(a0)
 
     # restore kernel stack , kernel usertrap , and kernel page table  
     lw sp, 0(a0)

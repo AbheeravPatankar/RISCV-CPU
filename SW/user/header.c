@@ -22,12 +22,15 @@ typedef struct segment_header
 __asm__(".section .header,\"aw\",@progbits");
 __asm__(".align 16");
 
-ELF_HEADER elf_header __attribute__((section(".header"), aligned(16))) = {1234, 0x000020c8, 1, 16};
+ELF_HEADER elf_header __attribute__((section(".header"), aligned(16))) = {1234, 0x00002000, 2, 16};
 
-SEGMENT_HEADER segment_header[1] __attribute__((section(".header"), aligned(16))) = {
+SEGMENT_HEADER segment_header[2] __attribute__((section(".header"), aligned(16))) = {
     {
-        4, 0x00000030, 0x00002000, 292, 4096
+        4, 0x00000040, 0x00002000, 64, 4096
+    },
+    {
+        4, 0x00000080, 0x00002040, 12, 4096
     }
 };
 
-char padding[12] __attribute__((section(".header"))) = {{0}};
+char padding[8] __attribute__((section(".header"))) = {{0}};

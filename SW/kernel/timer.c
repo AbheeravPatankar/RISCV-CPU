@@ -12,6 +12,9 @@ void timer_interrupt()
 {
     // increment the ticks count 
     ticks++;
+
+    // clear SSIP bit
+    asm volatile("csrc sip, %0" :: "r"(2));
 }
 
 void timerinit(void)

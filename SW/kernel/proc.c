@@ -315,7 +315,7 @@ void ksleep(void* chan)
 }
 
 // need to return 
-int kwait(int* addr)
+int kwait(uint32* addr)
 {
     PROC* parent = myproc();
     PROC* child;
@@ -378,5 +378,3 @@ void freeproc()
 {
     while(1);
 }
-
-

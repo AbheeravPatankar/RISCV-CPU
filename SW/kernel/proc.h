@@ -4,7 +4,7 @@
 #include "paging.h"
 
 #define MAX_PROC 10
-
+#define MAX_PROC_NAME 16
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 struct trapframe {
@@ -78,7 +78,7 @@ typedef struct proc
     uint32*  pagetable;
     struct trapframe* ptr_to_trapframe;
     struct context context;
-    char name[16];
+    char name[MAX_PROC_NAME];
 } PROC;
 
 typedef struct elf_header
