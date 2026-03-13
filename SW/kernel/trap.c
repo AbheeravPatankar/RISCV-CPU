@@ -3,7 +3,7 @@
 #include "paging.h"
 #include "timer.h"
 #include "syscall.h"
-
+#include "plic.h"
 
 // Needs to set these addresses 
 char* trampoline = 0x00000000;
@@ -114,12 +114,18 @@ void usertrap()
     }
     else if(scause == 0x80000009)
     {
+        
+        // claim that device interrupt from plic
+        int irq = plic_claim();
+
         // device interrupt (for now there are no external devices other than uart device )
 
         // handle the uart interrupt
         uartintr();
+
+        if(irq)
+            plic_complete(irq);
     }
 
    fork_ret();  
 }
-

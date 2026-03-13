@@ -34,12 +34,12 @@
 
 #define UART_TX_BUFFER_SIZE 32
 
+#define UART_RX_BUFFER_SIZE 32
+
 
 void uartinit();
 
 void uartintr();
-
-void uart_printc(char c);
 
 char uart_getc();
 

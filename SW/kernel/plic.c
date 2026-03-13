@@ -14,3 +14,17 @@ void plicinit()
     // set this hart's S-mode priority threshold to 0.
     *(uint32*)PLIC_SPRIORITY(hart) = 0;
 }
+
+plic_claim(void)
+{
+  int hart = 0;
+  int irq = *(uint32*)PLIC_SCLAIM(hart);
+  return irq;
+}
+
+
+void plic_complete(int irq)
+{
+  int hart = 0;
+  *(uint32*)PLIC_SCLAIM(hart) = irq;
+}

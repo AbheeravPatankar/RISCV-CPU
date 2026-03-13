@@ -1,10 +1,16 @@
 #include "uart.h"
 
-
 char uart_tx_buff[UART_TX_BUFFER_SIZE];
+char uart_rx_buff[UART_RX_BUFFER_SIZE];
 
 uint32 uart_tx_wr; 
 uint32 uart_tx_r;
+
+uint32 uart_rx_wr; 
+uint32 uart_rx_r;
+
+
+
 
 void uartinit()
 {
@@ -28,8 +34,53 @@ void uartinit()
     WriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
     
     // enable transmit and receive interrupts.
-    WriteReg(IER, IER_RX_ENABLE);
+    WriteReg(IER, IER_RX_ENABLE | IER_TX_ENABLE);
 }
+
+// prints a character on display 
+void uart_printc(char c) {  if((ReadReg(LSR) & LSR_TX_IDLE) != 0) { WriteReg(THR,c); } }
+
+
+void uart_insert_into_rx_buff(char c)
+{
+    // check for special characters like /r and /n
+    if(( c == '\b' ||  c == 0x7F  ) && uart_rx_wr != uart_rx_r)
+    {
+        // if buffer is not empty
+        uart_rx_wr = (uart_rx_wr == 0) ? UART_RX_BUFFER_SIZE - 1 : uart_rx_wr - 1;
+        uart_printc('\b');
+        uart_printc(' ');
+        uart_printc('\b');
+    }
+    else if(c == '\r' && uart_rx_wr + uart_rx_r != UART_RX_BUFFER_SIZE)
+    {
+        // if the buffer is not full
+        uart_rx_buff[uart_rx_wr] = '\n';
+        uart_rx_wr = ( uart_rx_wr + 1 ) % UART_RX_BUFFER_SIZE;
+        uart_printc('\n');
+    }
+    else
+    {
+        if(uart_rx_wr + uart_rx_r != UART_RX_BUFFER_SIZE)
+        {
+            uart_rx_buff[uart_rx_wr] = c;
+            uart_rx_wr = ( uart_rx_wr + 1 ) % UART_RX_BUFFER_SIZE;
+            uart_printc(c);
+        }
+    }
+}
+
+void uart_extract_chars_from_tx_buff()
+{
+    while(uart_tx_wr != uart_tx_r)
+    {
+        // uart buffer is not empty
+        char c = uart_tx_buff[uart_tx_r];
+        uart_tx_r = (uart_tx_r + 1) % UART_TX_BUFFER_SIZE ;
+        uart_printc(c);
+    }
+}
+
 
 char uart_getc()
 {
@@ -42,7 +93,7 @@ char uart_getc()
             // input data is ready.
             c = ReadReg(RHR);
             // print the char recieved on display
-            uart_printc(c);
+            uart_insert_into_rx_buff(c);
         }
         else
         {
@@ -52,31 +103,27 @@ char uart_getc()
     }
 }
 
-void uart_printc(char c)
+void handle_rx_intr()
 {
-    uint32* LSR_addr = Reg(LSR);
-    if((ReadReg(LSR) & LSR_TX_IDLE) != 0)
-    {
-        // write the character to the transmit buffer
-        WriteReg(THR,c);
+    // read the characters from RHR and insert them in the rx buffer
+    uart_getc();
 
-    }
-    else
-    {
-        // Receive buffer is empty
-        return ;
-    }
+    // wakeup the processes sleeping on uart_read
+    kwakeup(uart_rx_buff);
 }
 
+void handle_tx_intr()
+{
+    // send all the characters in the tx_fifo to the THR for displaying the characters 
+    
+    // wakeup process sleeping on tx_fifo buffer 
+}
 
 void uartintr()
 {
-    // read the char from the UART register and print it on the display
-    
-    uart_getc();
+    handle_rx_intr();
 
-    
-
+    handle_tx_intr();   
 }
 
 SEGMENT_HEADER* get_proc_elf_header(char* name)
