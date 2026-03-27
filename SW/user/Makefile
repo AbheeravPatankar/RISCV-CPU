@@ -9,13 +9,13 @@ CFLAGS = -march=rv32i -mabi=ilp32 -g
 LDFLAGS = -march=rv32i -mabi=ilp32 -nostartfiles -nostdlib -lgcc
 
 # Source files
-USER_SRC = parent.c
+USER_SRC = parent.c heap.c
 ASM_SRC  = syscall.S
 LINKER_SCRIPT = user.ld
 ELF_GENERATOR = elf_generator.py
 
 # Object files
-USER_OBJ = parent.o
+USER_OBJ = $(USER_SRC:.c=.o)
 ASM_OBJ  = syscall.o
 OBJS = $(USER_OBJ) $(ASM_OBJ)
 
@@ -34,8 +34,8 @@ FINAL_BIN = final.bin
 # Sections to extract
 SECTIONS = .text .rodata .data .bss .sdata .sbss .srodata
 
-# Output binary named after source file
-OUTPUT_BIN = $(basename $(USER_SRC)).bin
+# Output binary named after first source file
+OUTPUT_BIN = $(basename $(firstword $(USER_SRC))).bin
 
 # Default target
 .PHONY: all
@@ -55,11 +55,13 @@ all: $(FINAL_BIN) $(DUMP_FILE)
 	@echo "Kept files: $(HEADER_C)"
 	@echo "================================"
 
-# Build user program ELF
-$(PROG_ELF): $(USER_SRC) $(ASM_SRC) $(LINKER_SCRIPT)
-	@echo "Compiling user program..."
-	$(CC) $(CFLAGS) -c $(USER_SRC) -o $(USER_OBJ)
+# Pattern rule for compiling C files
+%.o: %.c
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) -c $< -o $@
 
+# Build user program ELF
+$(PROG_ELF): $(USER_OBJ) $(ASM_OBJ) $(LINKER_SCRIPT)
 	@echo "Compiling syscall assembly..."
 	$(CC) $(CFLAGS) -c $(ASM_SRC) -o $(ASM_OBJ)
 

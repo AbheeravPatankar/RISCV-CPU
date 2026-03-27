@@ -369,7 +369,7 @@ int kwait(uint32* addr)
 
 
 
-// void kkill()
+// void kill()
 
 // void freeproc() free all pages occupied by the proc , free its trapframe , free the proc structure 
 

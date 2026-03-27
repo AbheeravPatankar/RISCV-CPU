@@ -192,7 +192,7 @@ def print_header_structure(elf_path, output_file="header.c"):
     if pad_size > 0:
         content.append(
             f"char padding[{pad_size}] "
-            "__attribute__((section(\".header\"))) = {{0}};"
+            "__attribute__((section(\".header\"))) = {};"
         )
 
     with open(output_file, "w") as f:
