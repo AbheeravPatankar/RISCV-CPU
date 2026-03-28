@@ -22,6 +22,8 @@ void k_strcpy(char* dest, char* src);
 
 int strcmp(char* str1, char*str2);
 
+uint32 roundup(uint32 val, uint32 multiple);
+
 typedef uint32 pte_t;
 #define PTE_V   (1 << 0)
 #define PTE_R   (1 << 1)

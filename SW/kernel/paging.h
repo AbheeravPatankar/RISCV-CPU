@@ -1,6 +1,8 @@
 #pragma once
 
 #include "utils.h"
+#include "proc.h"
+
 
 #define PAGE_SIZE  4096
 #define MAX_PTE    1024
@@ -52,3 +54,5 @@ uint32 extract_pa_from_pte(uint32 pte);
 uint32 extract_perms_from_pte(uint32 pte) ;
 
 int set_perms(char* code);
+
+uint32* alloc_mem(uint32 size);

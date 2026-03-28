@@ -1,16 +1,55 @@
 #include "heap.h"
+#include "syscall.h"
+
 
 HEAP_HEADER* page = NULL;
+/*
+    Heap mem allocation flow 
+                                                  if not first   
+    user calls malloc -> malloc checks is first ---------------> then search for a hole in the free list ------------------------------ |----> if hole is not found then make syscall to kernel to alloc more mem -> add the new mem as hole in the free list --> consume and return base addr to user
+                            |                                                                                                           |
+                            | if yes                                                                                                    | if hole is found ( alloc mem req by user and alloc mem header )
+                            make syscall to alloc heap memory                                                                           |
+                            initialize the heap header                                                                                  | consume the hole ---> remove the hole from the free list ---> return base address 
+                            create the initial hole which is mem allocated - ( head header - mem req by user)                           |    
+                            insert the allocated heap header into the allocated mem 
+                            return base addr to the user 
+
+*/
+
+#define MAGIC_HOLE 0x484f4c45   //HOLE
 
 
-void heap_init(uint32 size, uint32* base_addr)
+void break_point(void* param)
+{
+    __asm__ volatile (
+        "mv a0, %0\n"
+        :
+        : "r"(param)
+        : "a0"
+    );
+
+    while(param != -1 * 0x100);
+
+    return ;
+}
+
+uint32 roundup(uint32 val, uint32 multiple)
+{
+    if (multiple == 0) return val;  // avoid division by zero
+
+    return ((val + multiple - 1) / multiple) * multiple;
+}
+
+
+void heap_init()
 {   
    // first hole is going to be page size - 4 ( the heap header will consume 4 bytes )
-   page->head_4b = (HOLE_4B*) ( page + 1 );
-   page->head_4b->base_addr = (uint32*) (page + 1);
-   page->head_4b->size = PAGE_SIZE - sizeof(HEAP_HEADER);
-   page->head_4b->left = NULL;
-   page->head_4b->right = NULL;
+   page->head_32b = (HOLE_32B*) ( page + 1 );
+   page->head_32b->base_addr = (uint32*) (page + 1);
+   page->head_32b->size = PAGE_SIZE - sizeof(HEAP_HEADER);
+   page->head_32b->left = NULL;
+   page->head_32b->right = NULL;
 
    // set all the elements in the array to NULL at the start
    page->array_of_head_l32b[0] = NULL;
@@ -30,8 +69,8 @@ void add_hole(uint32 size , uint32* base_addr)
     if(size >= 32)
     {
         // traverse the tree to find the node of insertion 
-        HOLE_4B* tmp = page->head_4b;
-        int is_right = 0;
+        HOLE_32B* tmp = page->head_32b;
+        int is_right = -1;
         while(tmp != NULL)
         {
             if(size > tmp->size)
@@ -49,26 +88,35 @@ void add_hole(uint32 size , uint32* base_addr)
                 if(tmp->left != NULL)
                     tmp = tmp->left;
                 else
+                {
+                    is_right = 0;  // left
                     break;
+                }
             }
         }
 
         // insert the node at base_addr
-        HOLE_4B* ptr = (HOLE_4B*)base_addr;
+        HOLE_32B* ptr = (HOLE_32B*)base_addr;
         ptr->base_addr = base_addr;
         ptr->size = size;
         ptr->left = NULL;
         ptr->right = NULL;
 
-        if(is_right)
+        break_point(is_right);
+        if(is_right == 1)
         {
             // insert the node at the right of tmp
             tmp->right = ptr;
         }
-        else
+        else if(is_right == 0)
         {
             // insert the node to the left of tmp
             tmp->left = ptr;
+        }
+        else
+        {
+            // you are inserting head node
+            page->head_32b = ptr;
         }
     }
     else
@@ -101,13 +149,13 @@ void add_hole(uint32 size , uint32* base_addr)
 }
 
 
-HOLE_4B* search_parent(HOLE_4B* hole)
+HOLE_32B* search_parent(HOLE_32B* hole)
 {
     uint32 size = hole->size;
     uint32 current = 0;
 
-    HOLE_4B* parent = NULL;
-    HOLE_4B* tmp = page->head_4b;
+    HOLE_32B* parent = NULL;
+    HOLE_32B* tmp = page->head_32b;
 
 
     // traverse the tree 
@@ -159,12 +207,12 @@ HOLE_4B* search_parent(HOLE_4B* hole)
 
 
 
-HOLE_4B* search_for_hole(uint32 size)
+HOLE_32B* search_for_hole(uint32 size)
 {
     uint32 current;
-    HOLE_4B* prev_highest = NULL;
+    HOLE_32B* prev_highest = NULL;
 
-    HOLE_4B* tmp = page->head_4b;
+    HOLE_32B* tmp = page->head_32b;
 
 
     // traverse the tree 
@@ -217,16 +265,16 @@ HOLE_4B* search_for_hole(uint32 size)
 }
 
 
-int remove_hole_32B(HOLE_4B* hole)
+int remove_hole_32B(HOLE_32B* hole)
 {
 
     if(hole == NULL)
         return -1;
-    HOLE_4B* left = hole->left;
-    HOLE_4B* right = hole->right;
+    HOLE_32B* left = hole->left;
+    HOLE_32B* right = hole->right;
 
     // search for the replacing node
-    HOLE_4B* replacing_hole = NULL;
+    HOLE_32B* replacing_hole = NULL;
 
     if(right != NULL)
     {
@@ -246,9 +294,16 @@ int remove_hole_32B(HOLE_4B* hole)
     }
     else
     {
-        // leaf node
-        HOLE_4B* deleting_node_parent = search_parent(hole);
-        if(deleting_node_parent->right == hole)
+        // leaf node or parent node 
+        HOLE_32B* deleting_node_parent = search_parent(hole);
+
+    
+        if(deleting_node_parent == NULL)
+        {
+            // parent node
+            page->head_32b = NULL;
+        }
+        else if(deleting_node_parent->right == hole)
         {
             deleting_node_parent->right = NULL;
         }
@@ -258,11 +313,11 @@ int remove_hole_32B(HOLE_4B* hole)
         }
     }
 
-    // deleted hole was a leaf node so no replacing node
+    // deleted hole was a leaf or parent node so no replacing node
     if(replacing_hole == NULL)
         return 0;
 
-    HOLE_4B* replacing_node_parent = search_parent(replacing_hole);
+    HOLE_32B* replacing_node_parent = search_parent(replacing_hole);
     if(replacing_node_parent == NULL)
     {
         return -1;
@@ -312,4 +367,78 @@ int remove_hole_l32B(uint32 size)
 
     return 0;
 
+}
+
+
+// function to allocate mem when a hole is found , it consumes the older hole and will attach the remaining hole back to the free list 
+// the size should be a multiple of 4 
+void* allocate_mem(HOLE_32B* hole, uint32 size)
+{
+    // remove the hole from the list
+    uint32 prev_size = hole->size;
+    if(remove_hole_32B(hole) == -1)
+        return NULL;
+
+    // allocate the mem by inserting the mem_allocation_header
+    MEM_ALLOCATION_HEADER* header = (MEM_ALLOCATION_HEADER*)hole;
+    header->magic = MAGIC_HOLE;
+    header->size = size;
+
+    // insert the new hole ( prev hole - size ) into the free list 
+    uint32 new_size = prev_size - size;
+    if(new_size >= 4)
+    {
+        add_hole(new_size, (uint32*)((char*)hole + size));
+    }
+
+    // return the base address of the hole 
+    break_point((void*)header + sizeof(MEM_ALLOCATION_HEADER));
+    return header + sizeof(MEM_ALLOCATION_HEADER);
+}
+
+void* malloc(uint32 size)
+{
+    static int isfirst = 1;
+
+    // round up size to multiple for 4 hole
+    size = roundup(size,4);
+    HOLE_32B* hole = NULL;
+    void* base_addr = NULL;
+
+    if(isfirst)
+    {
+        isfirst = 0;
+
+        // initialise the heap header
+        page = (HEAP_HEADER*)sys_sbrk(size);
+
+        heap_init();
+        
+        hole = search_for_hole(size + sizeof(MEM_ALLOCATION_HEADER));
+        base_addr = allocate_mem(hole, size);
+        break_point(page);
+        return base_addr;
+    }
+
+    hole = search_for_hole(size + sizeof(MEM_ALLOCATION_HEADER));
+    if(hole == NULL)
+    {
+        // allocate more mem from kernel
+        HOLE_32B* hole = (HOLE_32B*)sys_sbrk(size);
+
+        // sys_brk will always allocate mem in multiples of page size so update size in hole structure
+
+        uint32 size_allocated =roundup(size,PAGE_SIZE);
+ 
+        // construct the hole header
+        hole->base_addr = (uint32*)hole;
+        hole->size = size_allocated;
+        hole->left = hole->right = NULL;
+        
+    }
+
+    // allocate the requested memory and add the unconsumed memory back to the tree 
+    base_addr = allocate_mem(hole,size);
+
+    return base_addr;
 }

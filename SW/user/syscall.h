@@ -7,4 +7,5 @@ int sys_fork(void);
 int sys_exit(int status);
 int sys_exec(char* name);
 int sys_wait();
+void* sys_sbrk(uint32 size);
 #endif

@@ -23,3 +23,9 @@ sys_wait:
     li a7, SYS_wait
     ecall
     ret
+
+.global sys_sbrk
+sys_sbrk:
+    li a7, SYS_sbrk
+    ecall
+    ret

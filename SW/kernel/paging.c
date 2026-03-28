@@ -285,3 +285,20 @@ void map_trampoline_and_trapframe(uint32* pagetable, uint32* trapframe)
     map_va_to_pa(pagetable, PAGE_SIZE, trapframe , set_perms("RWV")); 
     return ;
 }
+
+// this is a sys_call handler when the user proc requests for dynamic memory 
+uint32* alloc_mem(uint32 size)
+{
+    PROC* p = myproc();
+    
+    // round up the size to PAGE_SIZE
+
+    size = roundup(size, PAGE_SIZE);
+    
+    // find the current size of the process (which will be PAGE_SIZE * 2 + p->size )
+    // we can allocate a page at this va
+    uint32 va = PAGE_SIZE * 2 + p->size;
+    map_vm(p->pagetable, va, size, set_perms("URW"));
+
+    return (uint32*)va;
+}   

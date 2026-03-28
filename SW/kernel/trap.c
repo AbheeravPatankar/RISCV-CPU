@@ -107,6 +107,10 @@ void usertrap()
                 kwait(p);  
                 break;
 
+            case SYS_sbrk:
+                sys_arg = p->ptr_to_trapframe->a0;
+                p->ptr_to_trapframe->a0 = alloc_mem(sys_arg);
+                break;
             default:
                 break;           
 

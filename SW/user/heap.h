@@ -1,13 +1,19 @@
 #pragma once
 #include "defines.h"
-typedef struct hole_4_bytes
+typedef struct hole_32_bytes
 {
     uint32* base_addr;
     uint32  size;
-    struct hole_4_bytes* right;
-    struct hole_4_bytes* left;
+    struct hole_32_bytes* right;
+    struct hole_32_bytes* left;
     
-}HOLE_4B;
+}HOLE_32B;
+
+typedef struct mem_allocation_header
+{
+    uint32 magic;
+    uint32 size;
+}MEM_ALLOCATION_HEADER;
 
 // L$B = less that 32 bytes
 typedef struct hole_less_that_32_bytes
@@ -19,7 +25,7 @@ typedef struct hole_less_that_32_bytes
 typedef struct heap_header
 {
     // holes having size >= 4B
-    HOLE_4B* head_4b;
+    HOLE_32B* head_32b;
 
     /*
         array_of_head[0] = head ptr to ll of holes size = 4B
@@ -29,12 +35,11 @@ typedef struct heap_header
         array_of_head[4] = head ptr to ll of holes size = 20B
         array_of_head[5] = head ptr to ll of holes size = 24B
         array_of_head[6] = head ptr to ll of holes size = 28B
-        next 8 byte padding 
     */
     HOLE_L32B* array_of_head_l32b[7];
 }HEAP_HEADER;
 
 
-uint32* malloc(uint32 size);
+void* malloc(uint32 size);
 
 void free(void* base_addr);

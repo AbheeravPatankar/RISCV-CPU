@@ -100,6 +100,14 @@ int strcmp(char* str1, char*str2)
     
 }
 
+
+uint32 roundup(uint32 val, uint32 multiple)
+{
+    if (multiple == 0) return val;  // avoid division by zero
+
+    return ((val + multiple - 1) / multiple) * multiple;
+}
+
 typedef uint32 pte_t;
 #define PTE_V   (1 << 0)
 #define PTE_R   (1 << 1)
