@@ -29,7 +29,7 @@ void break_point(void* param)
         : "a0"
     );
 
-    while(param != -1 * 0x100);
+    while(param != (void*)0x100);
 
     return ;
 }
@@ -102,7 +102,6 @@ void add_hole(uint32 size , uint32* base_addr)
         ptr->left = NULL;
         ptr->right = NULL;
 
-        break_point(is_right);
         if(is_right == 1)
         {
             // insert the node at the right of tmp
@@ -392,8 +391,7 @@ void* allocate_mem(HOLE_32B* hole, uint32 size)
     }
 
     // return the base address of the hole 
-    break_point((void*)header + sizeof(MEM_ALLOCATION_HEADER));
-    return header + sizeof(MEM_ALLOCATION_HEADER);
+    return (char*)header + sizeof(MEM_ALLOCATION_HEADER);
 }
 
 void* malloc(uint32 size)
@@ -416,7 +414,7 @@ void* malloc(uint32 size)
         
         hole = search_for_hole(size + sizeof(MEM_ALLOCATION_HEADER));
         base_addr = allocate_mem(hole, size);
-        break_point(page);
+
         return base_addr;
     }
 

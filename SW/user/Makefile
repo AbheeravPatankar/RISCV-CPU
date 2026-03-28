@@ -66,7 +66,7 @@ $(PROG_ELF): $(USER_OBJ) $(ASM_OBJ) $(LINKER_SCRIPT)
 	$(CC) $(CFLAGS) -c $(ASM_SRC) -o $(ASM_OBJ)
 
 	@echo "Linking ELF..."
-	$(CC) $(LDFLAGS) $(OBJS) -T $(LINKER_SCRIPT) -o $(PROG_ELF)
+	$(CC) $(LDFLAGS) $(OBJS) -T $(LINKER_SCRIPT) -o $(PROG_ELF) -lgcc
 
 	@echo "User program ELF created: $(PROG_ELF)"
 
