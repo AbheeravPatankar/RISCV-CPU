@@ -55,6 +55,27 @@ all: $(FINAL_BIN) $(DUMP_FILE)
 	@echo "Kept files: $(HEADER_C)"
 	@echo "================================"
 
+
+
+# Debug target - same as all but keeps ELF and program binary
+.PHONY: debug
+debug: $(FINAL_BIN) $(DUMP_FILE)
+	@echo "================================"
+	@echo "Debug build complete: $(FINAL_BIN)"
+	@echo "Objdump created: $(DUMP_FILE)"
+	@echo "================================"
+	@hexdump -C $(FINAL_BIN) | head -30
+	@echo ""
+	@echo "Cleaning intermediate files (keeping ELF)..."
+	@rm -f $(OBJS)
+	@rm -f $(HEADER_OBJ) $(HEADER_BIN)
+	@rm -f $(ELF_INFO)
+	@mv $(FINAL_BIN) $(OUTPUT_BIN)
+	@echo "Final binary: $(OUTPUT_BIN)"
+	@echo "Kept files: $(HEADER_C) $(PROG_ELF) $(PROG_BIN)"
+	@echo "================================"
+
+
 # Pattern rule for compiling C files
 %.o: %.c
 	@echo "Compiling $<..."

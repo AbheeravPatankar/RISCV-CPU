@@ -19,21 +19,6 @@ HEAP_HEADER* page = NULL;
 
 #define MAGIC_HOLE 0x484f4c45   //HOLE
 
-
-void break_point(void* param)
-{
-    __asm__ volatile (
-        "mv a0, %0\n"
-        :
-        : "r"(param)
-        : "a0"
-    );
-
-    while(param != (void*)0x100);
-
-    return ;
-}
-
 uint32 roundup(uint32 val, uint32 multiple)
 {
     if (multiple == 0) return val;  // avoid division by zero
@@ -41,6 +26,15 @@ uint32 roundup(uint32 val, uint32 multiple)
     return ((val + multiple - 1) / multiple) * multiple;
 }
 
+void memstr(char* addr, uint32 size, char val)
+{
+    uint32 idx = 0;
+    while(idx < size)
+    {
+        addr[idx] = val;
+        idx++;
+    }
+}
 
 void heap_init()
 {   
@@ -206,6 +200,7 @@ HOLE_32B* search_parent(HOLE_32B* hole)
 
 
 
+// Search for hole which is greater than or equal to 32 bytes 
 HOLE_32B* search_for_hole(uint32 size)
 {
     uint32 current;
@@ -254,7 +249,7 @@ HOLE_32B* search_for_hole(uint32 size)
     }
     else if(prev_highest == NULL)
     {
-        return NULL;
+        return tmp;
     }
     else
     {
@@ -331,7 +326,7 @@ int remove_hole_32B(HOLE_32B* hole)
     {
         if(replacing_node_parent->right == replacing_hole)
         {
-            replacing_node_parent->right == NULL;
+            replacing_node_parent->right = NULL;
         }
         else
         {
@@ -346,7 +341,13 @@ int remove_hole_32B(HOLE_32B* hole)
     {
         replacing_node_parent->left = replacing_hole->right;
     }
-  
+    
+    // if the deleted node was root the HEAP_HEADER->head_32b needs to be updated with the replacing node
+    if(hole == page->head_32b)
+    {
+        page->head_32b = replacing_hole;
+    }
+     
     return 0;
 }
 
@@ -377,12 +378,7 @@ void* allocate_mem(HOLE_32B* hole, uint32 size)
     uint32 prev_size = hole->size;
     if(remove_hole_32B(hole) == -1)
         return NULL;
-
-    // allocate the mem by inserting the mem_allocation_header
-    MEM_ALLOCATION_HEADER* header = (MEM_ALLOCATION_HEADER*)hole;
-    header->magic = MAGIC_HOLE;
-    header->size = size;
-
+        
     // insert the new hole ( prev hole - size ) into the free list 
     uint32 new_size = prev_size - size;
     if(new_size >= 4)
@@ -390,9 +386,22 @@ void* allocate_mem(HOLE_32B* hole, uint32 size)
         add_hole(new_size, (uint32*)((char*)hole + size));
     }
 
+    // allocate the mem by inserting the mem_allocation_header
+    MEM_ALLOCATION_HEADER* header = (MEM_ALLOCATION_HEADER*)hole;
+    header->magic = MAGIC_HOLE;
+    header->size = size;
+
+   
+
     // return the base address of the hole 
     return (char*)header + sizeof(MEM_ALLOCATION_HEADER);
 }
+
+
+
+//============================================= Functions exposed to the user programs ========================================================================
+
+
 
 void* malloc(uint32 size)
 {
@@ -413,7 +422,7 @@ void* malloc(uint32 size)
         heap_init();
         
         hole = search_for_hole(size + sizeof(MEM_ALLOCATION_HEADER));
-        base_addr = allocate_mem(hole, size);
+        base_addr = allocate_mem(hole, size + sizeof(MEM_ALLOCATION_HEADER));
 
         return base_addr;
     }
@@ -422,21 +431,39 @@ void* malloc(uint32 size)
     if(hole == NULL)
     {
         // allocate more mem from kernel
-        HOLE_32B* hole = (HOLE_32B*)sys_sbrk(size);
+        hole = (HOLE_32B*)sys_sbrk(size);
 
         // sys_brk will always allocate mem in multiples of page size so update size in hole structure
 
         uint32 size_allocated =roundup(size,PAGE_SIZE);
- 
-        // construct the hole header
-        hole->base_addr = (uint32*)hole;
-        hole->size = size_allocated;
-        hole->left = hole->right = NULL;
         
+        // add the hole to the BST 
+        add_hole(size_allocated, (uint32*)hole);
+
     }
 
     // allocate the requested memory and add the unconsumed memory back to the tree 
-    base_addr = allocate_mem(hole,size);
+    base_addr = allocate_mem(hole, size + sizeof(MEM_ALLOCATION_HEADER));
 
     return base_addr;
+}
+
+
+int mfree(void* base_addr)
+{
+    MEM_ALLOCATION_HEADER* header = base_addr;
+
+    // first check if this is a valid address by comparing the magic pattern
+    header = header - 1;
+
+    if(header->magic != MAGIC_HOLE)
+        return -1;
+    
+    // if it is a valid dynamic memory then clear it and add a hole in the tree
+    uint32 size = header->size;
+    memstr((char*)header,size, 0x0);
+
+    // add the hole to the free list
+    add_hole(size - sizeof(MEM_ALLOCATION_HEADER),(uint32*)base_addr - 2);
+
 }
