@@ -4,6 +4,7 @@
 #include "timer.h"
 #include "syscall.h"
 #include "plic.h"
+#include "uart.h"
 
 // Needs to set these addresses 
 char* trampoline = 0x00000000;
@@ -46,7 +47,9 @@ void prepare_return(void)
 void usertrap()
 {
 
-    // set stvec to kernelvec for kernel traps (kernel traps not implemented now)
+    // set stvec to kernelvec for kernel traps
+    asm volatile("csrw stvec, %0" :: "r" ((uint32)kernelvec));
+
     // save the sepc 
     PROC* p = myproc();
     uint32 sepc;
@@ -71,11 +74,14 @@ void usertrap()
         // check if the process is killed ? 
         char buff[MAX_PROC_NAME];
         uint32 sys_arg;
+        uint32* sys_arg_vec;
         if(killed(p))
         {
             kexit(-1);
         }
-        // TODO : turn on interrupts .... will enable this in a later phase 
+
+        // TODO : turn on interrupts .... will enable this in a later phase
+        asm volatile ("csrs sstatus, %0" :: "r"(1 << 1)); 
 
         // read the a7 register to identify which system call is this
         int sys_call_id = p->ptr_to_trapframe->a7;
@@ -111,6 +117,12 @@ void usertrap()
                 sys_arg = p->ptr_to_trapframe->a0;
                 p->ptr_to_trapframe->a0 = alloc_mem(sys_arg);
                 break;
+
+            case SYS_read:
+                // args will be char* buff and uint32 size
+                sys_arg_vec = p->ptr_to_trapframe->a0;      // get the ptr to buff 
+                sys_arg = p->ptr_to_trapframe->a1;          // get the size of the date to read 
+                console_read((char*)sys_arg_vec, (uint32)sys_arg);        
             default:
                 break;           
 
@@ -132,4 +144,47 @@ void usertrap()
     }
 
    fork_ret();  
+}
+
+
+void kerneltrap()
+{
+
+    // read sepc and scause 
+    uint32 sepc;
+    asm volatile("csrr %0, sepc" : "=r" (sepc));
+
+    uint32 scause;
+    asm volatile("csrr %0, scause" : "=r" (scause));
+
+    uint32 sstatus;
+    asm volatile("csrr %0, sstatus" : "=r" (sstatus));
+
+    if(scause == 0x80000001)
+    {
+        // timer interrupt
+        timer_interrupt();
+
+        kyeild();
+        
+    }
+
+    else if(scause == 0x80000009)
+    {
+        
+        // claim that device interrupt from plic
+        int irq = plic_claim();
+
+        // device interrupt (for now there are no external devices other than uart device )
+
+        // handle the uart interrupt
+        uartintr();
+
+        if(irq)
+            plic_complete(irq);
+    }
+
+    // restore sepc and sstatus value  
+    asm volatile("csrw sepc, %0" : : "r" (sepc));
+    asm volatile("csrw sstatus, %0" : : "r" (sstatus));
 }

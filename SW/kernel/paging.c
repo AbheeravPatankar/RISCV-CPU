@@ -278,7 +278,7 @@ void map_trampoline_and_trapframe(uint32* pagetable, uint32* trapframe)
 {
     // map the trampoline page at va = 0x0000
     map_vm(pagetable,0x000, PAGE_SIZE, set_perms("UXV"));
-    map_va_to_pa(pagetable, 0x000, 0x80004000, set_perms("RWXV"));
+    map_va_to_pa(pagetable, 0x000, 0x80011000, set_perms("RWXV"));
 
     // map the trapframe page
     map_vm(pagetable,PAGE_SIZE, PAGE_SIZE, set_perms("RWUV"));

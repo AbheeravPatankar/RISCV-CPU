@@ -13,20 +13,16 @@ void fill(char* start, uint32 size)
 
 
 char some_data[10] = {1,2,3,4,5,6,7,8,9};
+char buff[10] = {'a','a','a','a'};
 int break_flag = 0;
 int main()
 {
-    int* mem = (int*)malloc(100);
-    fill((char*)mem,100);
+    sys_read(buff,5);
 
-    char* mem2 = (char*)malloc(200);
-    fill((char*)mem2,200);
+    sys_read(buff,4);
 
-    mfree(mem);
-
-    mem = (int*)malloc(250);
-    fill((char*)mem,250);
-
-    /* loop infinitely */
-    while(1);
+    while(1)
+    {
+        sys_read(buff,4);
+    }
 }

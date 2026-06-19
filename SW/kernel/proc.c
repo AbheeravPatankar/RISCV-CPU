@@ -40,7 +40,7 @@ uint32 size_rounddown(uint32 size)
 
 int alloc_pid(void)
 {
-    static int pid_counter = -1;   
+    static int pid_counter = -1;  
     pid_counter++;
     return pid_counter;
 }
@@ -141,7 +141,7 @@ int kexec(char* name)
 
     // write code to signal uart to get the elf header
     if(strcmp("init", name))
-        elf_header = (ELF_HEADER*) 0x80005000;
+        elf_header = (ELF_HEADER*) 0x80012000;
     else
         elf_header = get_proc_elf_header(name);
 
@@ -236,6 +236,12 @@ void fork_ret()
 void  kyeild()
 {
     PROC* p = myproc();
+
+    if(p == NULL)
+    {
+        // the current process is scheduler process we cannot yeild a scheduler process 
+        return;
+    }
     p->state = RUNNABLE;
     
     // call switch to switch context from this thread to the swtchuler thread

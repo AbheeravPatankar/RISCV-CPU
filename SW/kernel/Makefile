@@ -18,7 +18,7 @@ LDSCRIPT = kernel.ld
 # Kernel source files
 # ------------------------------
 SRCS_C   = main.c paging.c utils.c proc.c timer.c scheduler.c trap.c start.c kernel_vm.c uart.c plic.c
-SRCS_ASM = entry.S swtch.S  timervec.S        # trampoline removed from kernel
+SRCS_ASM = entry.S swtch.S  timervec.S   kernelvec.S    # trampoline removed from kernel
 
 OBJS_C   = $(SRCS_C:.c=.o)
 OBJS_ASM = $(SRCS_ASM:.S=.o)
@@ -37,7 +37,7 @@ TRAMPOLINE_BIN = trampoline.bin
 # User program
 # ------------------------------
 USER_BIN  = /home/abheerav/RISCV-CPU/SW/user/parent.bin
-USER_ADDR = 0x80005000
+USER_ADDR = 0x80012000
 
 QEMU = qemu-system-riscv32
 
@@ -49,7 +49,7 @@ QEMU_FLAGS = \
 	-nographic \
 	-bios none \
 	-kernel $(PROG) \
-	-device loader,file=$(TRAMPOLINE_BIN),addr=0x80004000 \
+	-device loader,file=$(TRAMPOLINE_BIN),addr=0x80011000 \
 	-device loader,file=$(USER_BIN),addr=$(USER_ADDR) \
 	-d int,mmu,guest_errors -D qemu.log
 

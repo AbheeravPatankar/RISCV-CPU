@@ -13,6 +13,9 @@ void scheduler()
             // find a process which can be scheduled 
             if(processes[i].state == RUNNABLE)
             {
+                // disable interrupts again before scheduling a new process 
+                asm volatile ("csrc sstatus, %0" :: "r"(1 << 1));
+                
                 // make the context switch
                 processes[i].state = RUNNING;
                 cpu.current_proc = processes + i ;
@@ -24,7 +27,7 @@ void scheduler()
         }
         if(found == 0)
         {
-            // sleep until a new process is changed into runnable state 
-        }        
+            asm volatile ("csrs sstatus, %0" :: "r"(1 << 1)); 
+        }   
     }while(1);
 }

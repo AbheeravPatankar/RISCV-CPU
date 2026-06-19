@@ -26,10 +26,10 @@ ELF_HEADER elf_header __attribute__((section(".header"), aligned(16))) = {1234, 
 
 SEGMENT_HEADER segment_header[2] __attribute__((section(".header"), aligned(16))) = {
     {
-        4, 0x00000040, 0x00002000, 2936, 4096
+        4, 0x00000040, 0x00002000, 2904, 4096
     },
     {
-        4, 0x00000bb8, 0x00002b78, 24, 4096
+        4, 0x00000b98, 0x00002b58, 36, 4096
     }
 };
 

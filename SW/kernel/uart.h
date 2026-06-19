@@ -43,5 +43,9 @@ void uartintr();
 
 char uart_getc();
 
+void console_read(char* buffer, uint32 size);
+
+void console_write(char* buffer, uint32 size);
+
 // dummy process until uart implementatio is done 
 SEGMENT_HEADER* get_proc_elf_header(char* name);

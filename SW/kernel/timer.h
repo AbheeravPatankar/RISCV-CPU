@@ -12,3 +12,5 @@ void timerinit();
 void timervec();
 
 void timer_interrupt();
+
+void kernelvec();

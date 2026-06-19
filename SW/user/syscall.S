@@ -29,3 +29,10 @@ sys_sbrk:
     li a7, SYS_sbrk
     ecall
     ret
+
+
+.global sys_read
+sys_read:
+    li a7, SYS_read
+    ecall
+    ret

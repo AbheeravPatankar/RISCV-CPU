@@ -128,3 +128,7 @@ int kfork();
 void kexit(int status);
 
 void kwakeup(void* chan);
+
+void ksleep(void* chan);
+
+PROC* myproc();

@@ -4,7 +4,7 @@
 # 
 # Save current registers in old. Load from new.	
 
-
+.align 4
 .globl swtch
 swtch:
         sw ra, 0(a0)
