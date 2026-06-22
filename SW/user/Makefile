@@ -9,7 +9,7 @@ CFLAGS = -march=rv32i -mabi=ilp32 -g
 LDFLAGS = -march=rv32i -mabi=ilp32 -nostartfiles -nostdlib -lgcc
 
 # Source files
-USER_SRC = parent.c heap.c
+USER_SRC = parent.c heap.c libio.c
 ASM_SRC  = syscall.S
 LINKER_SCRIPT = user.ld
 ELF_GENERATOR = elf_generator.py

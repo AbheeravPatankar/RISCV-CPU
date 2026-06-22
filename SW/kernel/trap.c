@@ -122,7 +122,14 @@ void usertrap()
                 // args will be char* buff and uint32 size
                 sys_arg_vec = p->ptr_to_trapframe->a0;      // get the ptr to buff 
                 sys_arg = p->ptr_to_trapframe->a1;          // get the size of the date to read 
-                console_read((char*)sys_arg_vec, (uint32)sys_arg);        
+                console_read((char*)sys_arg_vec, (uint32)sys_arg);
+                break;
+            case SYS_write:
+                // args will be char* buff and uint32 size
+                sys_arg_vec = p->ptr_to_trapframe->a0;      // get the ptr to buff 
+                sys_arg = p->ptr_to_trapframe->a1;          // get the size of the date to read
+                console_write((char*)sys_arg_vec, (uint32)sys_arg);
+                break;       
             default:
                 break;           
 

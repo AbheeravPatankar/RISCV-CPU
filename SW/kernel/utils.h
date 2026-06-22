@@ -16,6 +16,8 @@ void k_memcpy(char* dest, char* src, uint32 size);
 
 int max(int a, int b);
 
+int min(int a, int b);
+
 int binaryToDecimal(int* arr, int size);
 
 void k_strcpy(char* dest, char* src);

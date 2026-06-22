@@ -6,3 +6,4 @@
 
 #include "syscall.h"
 #include "heap.h"
+#include "libio.h"

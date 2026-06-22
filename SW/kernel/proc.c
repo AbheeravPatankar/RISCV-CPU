@@ -210,7 +210,7 @@ void userinit()
     PROC* p = alloc_proc();
     initproc = p;
     p->state = RUNNABLE;
-    p->context.sp = p->kstack + PAGE_SIZE;
+    p->context.sp = (char*)p->kstack + PAGE_SIZE;
     p->context.ra = fork_ret;
 
     // process is ready to be swtchled now 

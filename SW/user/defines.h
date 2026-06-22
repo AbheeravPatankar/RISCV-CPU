@@ -12,3 +12,4 @@
 #define SYS_wait    4
 #define SYS_sbrk    5
 #define SYS_read    6
+#define SYS_write   7

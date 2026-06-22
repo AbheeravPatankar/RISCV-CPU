@@ -181,8 +181,8 @@ void copyout(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size)
     {
         uint32 pte = va_to_pte(pagetable, u_va);
         uint32 u_pa = extract_pa_from_pte(pte);
-        int size_temp = min(PAGE_SIZE - ((uint32)u_pa % PAGE_SIZE) , size);
         uint32 offset = u_va & 0xFFF;
+        int size_temp = min(PAGE_SIZE -offset , size);       
         u_pa = u_pa + offset;
         k_memcpy((char*)u_pa, (char*)k_pa, size_temp);
         u_va = (char*)u_va + size_temp;
@@ -199,7 +199,7 @@ void copyin(uint32* pagetable, uint32* k_pa, uint32  u_va, uint32 size)
         uint32 pte = va_to_pte(pagetable, u_va);
         uint32 u_pa = extract_pa_from_pte(pte);
         uint32 offset = u_va & 0xFFF;
-        int size_temp = min(PAGE_SIZE - ((uint32)u_pa % PAGE_SIZE) , size);
+        int size_temp = min(PAGE_SIZE -offset , size);
         u_pa = u_pa + offset;
         k_memcpy((char*)k_pa, (char*) u_pa, size_temp);
         u_va += size_temp;

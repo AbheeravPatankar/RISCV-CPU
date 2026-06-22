@@ -9,4 +9,5 @@ int sys_exec(char* name);
 int sys_wait();
 void* sys_sbrk(uint32 size);
 void* sys_read(void* buffer, uint32 size);
+void sys_write(void* buffer, uint32 size);
 #endif

@@ -36,3 +36,9 @@ sys_read:
     li a7, SYS_read
     ecall
     ret
+
+.global sys_write
+sys_write:
+    li a7, SYS_write
+    ecall
+    ret

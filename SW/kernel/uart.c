@@ -1,6 +1,7 @@
 #include "uart.h"
 #include "paging.h"
 #include "proc.h"
+#include "utils.h"
 
 char uart_tx_buff[UART_TX_BUFFER_SIZE];
 char uart_rx_buff[UART_RX_BUFFER_SIZE];
@@ -180,23 +181,32 @@ SEGMENT_HEADER* get_proc_elf_header(char* name)
 // sleeps when the tx_buffer is full
 void console_write(char* buffer, uint32 size)
 {
-    // for loop to write all the characters from the buffer into tx buffer
-    for(int i = 0; i < size ; i++)
-    {
-        // check if the tx buffer is not full
-        if(!is_full(uart_tx_r, uart_tx_wr, UART_TX_BUFFER_SIZE))
-        {
-            // uart is not full 
-            uart_insert_char_into_tx(buffer[i]);
 
-        }
-        else
+    char temp[UART_TX_BUFFER_SIZE];
+    uint32 size_copied = 0;
+    while(size > 0)
+    {
+        // copy the chars from user buffer into some temp buffer
+        copyin(myproc()->pagetable, (uint32*)temp, (uint32)buffer, min(UART_TX_BUFFER_SIZE, size));
+        size_copied = min(UART_TX_BUFFER_SIZE, size) ;
+
+        for(int i = 0 ; i < size_copied; i++)
         {
-            // tx is full so process will sleep until some char is displayed
-            ksleep(uart_tx_buff);
+            if(!is_full(uart_tx_r, uart_tx_wr, UART_TX_BUFFER_SIZE))
+            {
+                // insert characters into uart tx buffer 
+                uart_insert_char_into_tx(temp[i]);
+
+            }
+            else
+            {
+                // tx is full so process will sleep until some char is displayed
+                ksleep(uart_tx_buff);
+            }
         }
+
+        size = size - size_copied;
     }
-    
 
     // print the chars on the display
     handle_tx_intr();
