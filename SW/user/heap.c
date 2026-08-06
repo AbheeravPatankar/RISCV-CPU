@@ -403,7 +403,7 @@ void* allocate_mem(HOLE_32B* hole, uint32 size)
 
 
 
-void* malloc(uint32 size)
+void* rv_malloc(uint32 size)
 {
     static int isfirst = 1;
 
@@ -449,7 +449,7 @@ void* malloc(uint32 size)
 }
 
 
-int mfree(void* base_addr)
+int rv_free(void* base_addr)
 {
     MEM_ALLOCATION_HEADER* header = base_addr;
 

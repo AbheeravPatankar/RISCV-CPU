@@ -46,6 +46,6 @@ typedef struct heap_header
 }HEAP_HEADER;
 
 
-void* malloc(uint32 size);
+void* rv_malloc(uint32 size);
 
-int mfree(void* base_addr);
+int rv_free(void* base_addr);
