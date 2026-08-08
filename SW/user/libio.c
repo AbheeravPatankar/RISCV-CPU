@@ -137,6 +137,44 @@ uint32 format_string(char* ptr_to_str, uint32 str_len, char* str_buff, char* arg
     return (uint32)(tmp_buff - str_buff);
 }
 
+
+void scan_string(char* ptr_to_str, uint32 str_len)
+{
+    uint32 arg_count = 0;
+    for(int i = 0; i < str_len; i++)
+    {
+        if(ptr_to_str[i] == '%')
+        {
+            // access specifier
+            // its an access specifier
+            char c = ptr_to_str[i + 1];
+            if(c == 'p' || c == 'd' || c == 'u')
+            {
+                // read an integer from the console
+                uint32 tmp = 0;
+                sys_read(&tmp, 4);                
+            }
+            else if ( c == 'c') 
+            {
+                
+            }
+            else 
+            {
+                
+            }
+            arg_count++;
+            i++;
+        }
+        // do nothing on a normal character 
+    }
+}
+
+/*
+============================================================================================================
+                These are the functions exposed to the user 
+*/
+
+
 int rv_printf(char* str, ...)
 {
     // enough for register args + some stack-spilled ones; size to your needs
@@ -161,5 +199,24 @@ int rv_printf(char* str, ...)
 
     rv_free((void*)str_buff);
 
-    return 0;
+    return string_len;
+}
+
+
+int rv_scanf(char* str, ...)
+{
+    // enough for register args + some stack-spilled ones; size to your needs
+    char *arg_vec;
+
+    // step 2: grab s0, pointing at the caller's stack-spilled args (8th onward)
+    asm volatile ("mv %0, s0" : "=r"(arg_vec));
+    arg_vec = arg_vec + 4;
+
+    char* ptr_to_str;
+
+    asm volatile ("mv %0, a0" : "=r"(ptr_to_str));
+
+    uint32 string_len = 0;
+    string_len = get_str_len(ptr_to_str);
+
 }

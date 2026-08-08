@@ -1,4 +1,4 @@
 #pragma once 
 
 int rv_printf(char* str, ...);
-int rv_scanf();
+int rv_scanf(char* str, ...);
